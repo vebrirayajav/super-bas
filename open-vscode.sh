@@ -11,6 +11,9 @@ fi
 
 # Open the current directory in VS Code
 echo "Opening project in VS Code..."
-code .
-
-echo "VS Code opened successfully!"
+if code .; then
+    echo "VS Code opened successfully!"
+else
+    echo "Error: Failed to open VS Code."
+    exit 1
+fi
