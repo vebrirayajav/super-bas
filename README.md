@@ -6,10 +6,15 @@ A simple project with VS Code integration.
 
 ### Using the Script
 
-Run the provided script to open the project in VS Code:
+The project includes an executable script to open VS Code. Simply run:
 
 ```bash
 ./open-vscode.sh
+```
+
+Note: The script is already executable. If you encounter permission issues, run:
+```bash
+chmod +x open-vscode.sh
 ```
 
 ### Manual Method
