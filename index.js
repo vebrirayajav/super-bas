@@ -103,7 +103,9 @@ app.listen(PORT, () => {
   
   // Test connection on startup
   console.log('Testing Google Sheets API connection...');
-  sheetsService.testConnection();
+  sheetsService.testConnection().catch(err => {
+    console.error('Failed to test connection on startup:', err.message);
+  });
 });
 
 module.exports = app;

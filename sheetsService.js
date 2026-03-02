@@ -1,6 +1,9 @@
 const { google } = require('googleapis');
 require('dotenv').config();
 
+// Configuration constants
+const MAX_ROWS = process.env.MAX_ROWS || 1000;
+
 /**
  * Google Sheets Service
  * Handles connection and data retrieval from Google Sheets API
@@ -10,6 +13,7 @@ class SheetsService {
     this.apiKey = process.env.GOOGLE_SHEETS_API_KEY;
     this.spreadsheetId = process.env.SPREADSHEET_ID;
     this.sheetName = process.env.SHEET_NAME || 'Sheet1';
+    this.maxRows = MAX_ROWS;
     
     if (!this.apiKey) {
       console.warn('Warning: GOOGLE_SHEETS_API_KEY not set in environment variables');
@@ -33,7 +37,7 @@ class SheetsService {
 
       const sheets = google.sheets({ version: 'v4', auth: this.apiKey });
       
-      const fullRange = range || `${this.sheetName}!A1:Z1000`;
+      const fullRange = range || `${this.sheetName}!A1:Z${this.maxRows}`;
       
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
