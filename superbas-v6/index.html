@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="google" content="notranslate" />
     <title>PT. BAROKAH AMANAH SENTOSA</title>
-      <link rel="icon" href="assets/bas1.svg" />
+      <link rel="icon" href="assets/bas-logo.png" />
       <script src="https://cdn.tailwindcss.com"></script>
       <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
 
@@ -1018,50 +1018,55 @@
       }
 
       /* ===== LOGIN LOBBY — LOGO & LAYOUT ===== */
-      /* Logo container: strip circle, enlarge */
+      /* Logo container: strip circle bg, transparent, centered */
       .max-w-sm .w-20.h-20.rounded-full[class*="bg-gradient-to-br"] {
         background: transparent !important;
         border: none !important;
         border-radius: 0 !important;
         padding: 0 !important;
-        width: 13rem !important;
-        height: auto !important;
+        width: 8rem !important;
+        height: 8rem !important;
         box-shadow: none !important;
-        aspect-ratio: auto !important;
+        aspect-ratio: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
       }
       .max-w-sm .w-20.h-20.rounded-full[class*="bg-gradient-to-br"]:hover {
         box-shadow: none !important;
       }
-      /* Logo image: no rounding, fill container */
+      /* Logo image: crisp, contain, no rounding */
       .max-w-sm .w-20.h-20 img[alt="Logo"] {
         border-radius: 0 !important;
         object-fit: contain !important;
         width: 100% !important;
-        height: auto !important;
+        height: 100% !important;
+        image-rendering: -webkit-optimize-contrast;
       }
       /* Header section: compact spacing */
       .max-w-sm .text-center.mb-8 {
-        margin-bottom: 1rem !important;
+        margin-bottom: 1.25rem !important;
       }
       .max-w-sm .text-center.mb-8 > .mb-4 {
-        margin-bottom: 0.25rem !important;
+        margin-bottom: 0.5rem !important;
       }
-      /* SUPER-BAS title: smaller to let logo dominate */
+      /* SUPER-BAS title: balanced with logo */
       .max-w-sm .water-wave-text.text-4xl {
-        font-size: 1.75rem !important;
-        letter-spacing: 0.15em !important;
-        margin-top: 0.25rem !important;
-      }
-      /* Status badge: less gap */
-      .max-w-sm .mt-3.flex.justify-center {
+        font-size: 1.5rem !important;
+        letter-spacing: 0.18em !important;
         margin-top: 0.5rem !important;
+        font-weight: 800 !important;
       }
-      /* Card: tighter padding, smaller radius */
+      /* Status badge: neat gap */
+      .max-w-sm .mt-3.flex.justify-center {
+        margin-top: 0.75rem !important;
+      }
+      /* Card: clean padding & radius */
       .max-w-sm.rounded-\[3rem\] {
-        padding: 2rem 1.75rem 1.75rem !important;
+        padding: 2.25rem 2rem 2rem !important;
         border-radius: 2rem !important;
       }
-      /* Input containers: slimmer */
+      /* Input containers: balanced height */
       .max-w-sm input {
         padding-top: 0.85rem !important;
         padding-bottom: 0.85rem !important;
@@ -1072,13 +1077,17 @@
       }
       /* Form fields gap */
       .max-w-sm .space-y-5 {
-        gap: 0.75rem !important;
+        gap: 0.85rem !important;
       }
-      /* Submit button: compact */
+      /* Submit button: balanced */
       .max-w-sm button[type="submit"] {
-        margin-top: 0.5rem !important;
-        padding-top: 0.85rem !important;
-        padding-bottom: 0.85rem !important;
+        margin-top: 0.75rem !important;
+        padding-top: 0.9rem !important;
+        padding-bottom: 0.9rem !important;
+      }
+      /* Hide the BAS text h1 on login (logo speaks for itself) */
+      .max-w-sm h1.text-4xl {
+        display: none !important;
       }
 
       /* ===== LOGIN SCREEN — FULL LIGHT MODE ===== */
@@ -3386,7 +3395,7 @@
     <!-- LOGO AVATAR REPLACER: Replace Google Drive logos with local BAS logo -->
     <script>
       (function() {
-        var LOCAL_LOGO = 'assets/bas1.svg';
+        var LOCAL_LOGO = 'assets/bas-logo.png';
         var DRIVE_PATTERN = 'drive.google.com/thumbnail';
 
         function replaceLogos() {
