@@ -220,7 +220,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG & STATE
 // ═══════════════════════════════════════════════════════════════
-const DEFAULT_API = "https://script.google.com/macros/s/AKfycbylz213eFucAEniyxuVtNkYy86xUKXdwVbGD0M9rnNGoTziQyIWCOnyUQx1Nwc-eTCU/exec";
+const DEFAULT_API = "https://script.google.com/macros/s/AKfycbzyZ5HEZl9zGYTS28kEIqO8ovJAUArsLkeobDZQWW0sUP-CDyY3GoL0FZnxisBcL-Y1/exec";
 let API = localStorage.getItem('bas_api_url') || DEFAULT_API;
 let employees=[], attMap={}, payMap={}, charts={}, curTab='overview';
 
@@ -892,12 +892,50 @@ async function loadAll(){
   // Set employees
   employees = allEmployees;
   
+  // 3.5. Normalize field names across all data sources
+  // DataKaryawan uses "ops" instead of "opsId", Absensi uses "opsid", SlipGaji uses "totalYangDibayarkan"
+  employees.forEach(e => {
+    if(!e.opsId && e.ops) e.opsId = e.ops;
+    if(!e.opsId && e.opsid) e.opsId = e.opsid;
+    if(!e.name && e.nama) e.name = e.nama;
+    if(!e.name && e.namaLengkap) e.name = e.namaLengkap;
+    if(!e.position && e.jabatan) e.position = e.jabatan;
+    if(!e.phone && e.wa) e.phone = e.wa;
+    if(!e.bankAccount && e.rekening) e.bankAccount = e.rekening;
+    if(!e.bankName && e.namaBank) e.bankName = e.namaBank;
+    if(!e.station && e.hubDc) e.station = e.hubDc;
+    if(!e.joinDate && e.join) e.joinDate = e.join;
+  });
+  
   // 4. Load attendance & payslips per employee (only if NOT auto-discovered)
   if(!usedAutoDiscovery && employees.length > 0) {
     const proms=employees.map(async e=>{
       const[a,p]=await Promise.all([api('getAttendance',{opsId:e.opsId}),api('getPayslips',{opsId:e.opsId})]);
-      attMap[e.opsId]=Array.isArray(a)?a:[];
-      payMap[e.opsId]=Array.isArray(p)?p:[];
+      // Normalize attendance fields
+      const normA = (Array.isArray(a)?a:[]).map(r => {
+        if(!r.opsId && r.opsid) r.opsId = r.opsid;
+        if(!r.opsId && r.ops) r.opsId = r.ops;
+        if(!r.name && r.namaLengkap) r.name = r.namaLengkap;
+        if(!r.name && r.nama) r.name = r.nama;
+        return r;
+      });
+      // Normalize payslip fields
+      const normP = (Array.isArray(p)?p:[]).map(r => {
+        if(!r.opsId && r.ops) r.opsId = r.ops;
+        if(!r.opsId && r.opsid) r.opsId = r.opsid;
+        if(!r.name && r.nama) r.name = r.nama;
+        // totalYangDibayarkan → totalDibayarkan
+        if(r.totalDibayarkan === undefined && r.totalYangDibayarkan !== undefined) r.totalDibayarkan = r.totalYangDibayarkan;
+        // Ensure numeric
+        if(typeof r.totalDibayarkan === 'string') r.totalDibayarkan = parseFloat(r.totalDibayarkan.replace(/[^\d.-]/g,''))||0;
+        if(!r.totalDibayarkan && r.gaji) r.totalDibayarkan = typeof r.gaji === 'number' ? r.gaji : parseFloat(String(r.gaji).replace(/[^\d.-]/g,''))||0;
+        if(!r.station && r.hubDc) r.station = r.hubDc;
+        // period: try to extract from other fields if missing
+        if(!r.period && r.periode) r.period = r.periode;
+        return r;
+      });
+      attMap[e.opsId]=normA;
+      payMap[e.opsId]=normP;
     });
     await Promise.all(proms);
   }
