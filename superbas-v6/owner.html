@@ -214,6 +214,11 @@
       border-color: rgba(0,0,0,0.06);
     }
     html.light .sidebar .border-white\/5 { border-color: rgba(0,0,0,0.06); }
+    /* Logo hitam di mode terang */
+    html.light .sidebar img[alt="BAS Logo"],
+    html.light header img[alt="BAS Logo"] {
+      filter: brightness(0) !important;
+    }
     html.light .sidebar-btn { color: #64748b; }
     html.light .sidebar-btn:hover,
     html.light .sidebar-btn.active { background: rgba(247,37,133,0.06); }
