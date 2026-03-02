@@ -2823,7 +2823,7 @@ function rSettings(){
           <p class="text-accent-orange font-bold">⚠ PENTING:</p>
           <p class="mt-1">Setiap kali mengubah kode Apps Script, Anda harus membuat <strong class="text-white">New deployment</strong> dan menggunakan URL baru.</p>
           <p class="mt-1">Deep Learning Engine <strong class="text-accent-cyan">secara otomatis mendeteksi</strong> sheet manapun yang berisi data karyawan/presensi/gaji — tidak perlu nama sheet khusus.</p>
-          <p class="mt-1">Nama sheet yang dikenali secara langsung: <strong class="text-white">Employees, Attendance, Payslips</strong></p>
+          <p class="mt-1">Nama sheet yang dikenali secara langsung: <strong class="text-white">DataKaryawan, Absensi, SlipGaji</strong></p>
         </div>
       </div>
     </div>
@@ -3049,12 +3049,12 @@ async function runDiagnose(){
         <div class="p-4 rounded-xl bg-red-500/10 border border-red-500/30 space-y-3">
           <p class="text-red-400 font-bold text-sm">🔍 KENAPA DATA KOSONG?</p>
           <div class="text-slate-400 space-y-2">
-            <p>API Anda terhubung dan bekerja, tapi sheet <strong class="text-white">Employees</strong> di Google Sheets kosong atau tidak ditemukan.</p>
+            <p>API Anda terhubung dan bekerja, tapi sheet <strong class="text-white">DataKaryawan</strong> di Google Sheets kosong atau tidak ditemukan.</p>
             
             <div class="p-3 rounded-lg bg-white/5 space-y-2">
               <p class="text-accent-pink font-bold">Kemungkinan Penyebab:</p>
               <p>❶ <strong class="text-white">Apps Script terpasang di spreadsheet yang salah</strong> — Apps Script harus di-deploy dari spreadsheet yang BERISI data karyawan (bukan spreadsheet kosong baru)</p>
-              <p>❷ <strong class="text-white">Nama sheet tidak sesuai</strong> — Sheet harus bernama persis: <code class="text-accent-cyan">Employees</code>, <code class="text-accent-cyan">Attendance</code>, <code class="text-accent-cyan">Payslips</code></p>
+              <p>❷ <strong class="text-white">Nama sheet tidak sesuai</strong> — Sheet harus bernama persis: <code class="text-accent-cyan">DataKaryawan</code>, <code class="text-accent-cyan">Absensi</code>, <code class="text-accent-cyan">SlipGaji</code></p>
               <p>❸ <strong class="text-white">Sheet ada tapi kosong</strong> — Belum ada data di baris ke-2 dan seterusnya</p>
               <p>❹ <strong class="text-white">Format header salah</strong> — Baris pertama harus berisi header kolom (OPS ID, NIK, Name, dll)</p>
             </div>
@@ -3062,7 +3062,7 @@ async function runDiagnose(){
             <div class="p-3 rounded-lg bg-accent-cyan/5 border border-accent-cyan/20 space-y-2">
               <p class="text-accent-cyan font-bold">🔧 Cara Memperbaiki:</p>
               <p>1. Buka spreadsheet tempat Anda men-deploy Apps Script</p>
-              <p>2. Pastikan ada sheet bernama <strong class="text-white">Employees</strong> dengan data di dalamnya</p>
+              <p>2. Pastikan ada sheet bernama <strong class="text-white">DataKaryawan</strong> dengan data di dalamnya</p>
               <p>3. Jika data Anda ada di spreadsheet lain (misalnya "REKAP DW"), Anda perlu:</p>
               <p class="pl-4">a. Buka spreadsheet yang berisi data → Extensions → Apps Script</p>
               <p class="pl-4">b. Paste kode APPS_SCRIPT_COMPLETE.gs → Deploy → New deployment</p>

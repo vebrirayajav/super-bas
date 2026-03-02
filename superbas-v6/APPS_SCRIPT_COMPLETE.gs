@@ -21,9 +21,9 @@
  *  6. Copy URL deployment, paste ke index.html dan owner.html
  *
  *  SHEETS YANG DIGUNAKAN (struktur TIDAK diubah):
- *  • Employees    — Data karyawan (kolom sesuai existing)
- *  • Attendance   — Data presensi (kolom sesuai existing)
- *  • Payslips     — Data slip gaji (kolom sesuai existing)
+ *  • DataKaryawan — Data karyawan (kolom sesuai existing)
+ *  • Absensi      — Data presensi (kolom sesuai existing)
+ *  • SlipGaji     — Data slip gaji (kolom sesuai existing)
  *  • DataOwner    — Login Owner/Korlap
  *  • SystemMessage— Broadcast message
  */
@@ -230,9 +230,9 @@ function handleGetAllData() {
       if(nameUpper.indexOf('PAY')!==-1||nameUpper.indexOf('GAJI')!==-1||nameUpper.indexOf('SALARY')!==-1||nameUpper.indexOf('SLIP')!==-1||nameUpper.indexOf('REKAP')!==-1) payScore+=5;
 
       // Direct name match (highest priority)
-      if(nameUpper==='EMPLOYEES'||nameUpper==='EMPLOYEE') empScore+=20;
-      if(nameUpper==='ATTENDANCE') attScore+=20;
-      if(nameUpper==='PAYSLIPS'||nameUpper==='PAYSLIP') payScore+=20;
+      if(nameUpper==='DATAKARYAWAN'||nameUpper==='DATA KARYAWAN'||nameUpper==='EMPLOYEES'||nameUpper==='EMPLOYEE') empScore+=20;
+      if(nameUpper==='ABSENSI'||nameUpper==='ATTENDANCE') attScore+=20;
+      if(nameUpper==='SLIPGAJI'||nameUpper==='SLIP GAJI'||nameUpper==='PAYSLIPS'||nameUpper==='PAYSLIP') payScore+=20;
 
       var maxScore = Math.max(empScore, attScore, payScore);
       if(maxScore < 2) continue; // Not enough matching
@@ -339,7 +339,7 @@ function handleDiagnose() {
       timestamp: new Date().toISOString(),
       sheets: []
     };
-    var requiredSheets = ['Employees', 'Attendance', 'Payslips', 'DataOwner', 'SystemMessage'];
+    var requiredSheets = ['DataKaryawan', 'Absensi', 'SlipGaji', 'DataOwner', 'SystemMessage'];
     var foundSheets = {};
     for (var i = 0; i < sheets.length; i++) {
       var s = sheets[i];
@@ -368,9 +368,9 @@ function handleSetup() {
     var created = [];
 
     var sheetsConfig = [
-      { name: 'Employees',     headers: ['OPS ID', 'NIK', 'Name', 'Position', 'Phone', 'Address', 'Status'] },
-      { name: 'Attendance',    headers: ['OPS ID', 'Date', 'Station', 'Shifting', 'Status'] },
-      { name: 'Payslips',      headers: ['ID', 'Period', 'No', 'Help', 'Nama', 'Ops', 'Divisi', 'Hub Dc', 'Area',
+      { name: 'DataKaryawan',  headers: ['OPS ID', 'NIK', 'Name', 'Position', 'Phone', 'Address', 'Status'] },
+      { name: 'Absensi',       headers: ['OPS ID', 'Date', 'Station', 'Shifting', 'Status'] },
+      { name: 'SlipGaji',      headers: ['ID', 'Period', 'No', 'Help', 'Nama', 'Ops', 'Divisi', 'Hub Dc', 'Area',
         'Kota Kab', 'HK', 'HK Rapel', 'Rate Perhari', 'Gaji', 'Rapel', 'Attendance Incentive',
         'Campaign Incentive', 'Incentive Performance Cache', 'Claim', 'Pot Pribadi', 'Asuransi',
         'Total Dibayarkan', 'Done Proses', 'Nomor Rekening', 'Atas Nama', 'Nama Bank', 'Status',
@@ -412,8 +412,8 @@ function handleLogin(data) {
 
   if (!opsId || !nik) return { error: 'ID dan NIK wajib diisi' };
 
-  var sheet = getSheet('Employees');
-  if (!sheet) return { error: 'Sheet Employees tidak ditemukan' };
+  var sheet = getSheet('DataKaryawan');
+  if (!sheet) return { error: 'Sheet DataKaryawan tidak ditemukan' };
 
   var allData = sheet.getDataRange().getValues();
   if (allData.length < 2) return { error: 'Data karyawan kosong' };
@@ -422,8 +422,8 @@ function handleLogin(data) {
   var opsCol = findOpsColumn(headers);
   var nikCol = findColumn(headers, 'NIK');
 
-  if (opsCol === -1) return { error: 'Kolom OPS ID tidak ditemukan di sheet Employees' };
-  if (nikCol === -1) return { error: 'Kolom NIK tidak ditemukan di sheet Employees' };
+  if (opsCol === -1) return { error: 'Kolom OPS ID tidak ditemukan di sheet DataKaryawan' };
+  if (nikCol === -1) return { error: 'Kolom NIK tidak ditemukan di sheet DataKaryawan' };
 
   var fields = headers.map(toCamelCase);
   var tz = Session.getScriptTimeZone();
@@ -492,7 +492,7 @@ function handleLoginOwner(data) {
 // ═══════════════════════════════════════════════════════════════
 
 function handleGetAllEmployees() {
-  var result = readSheet('Employees');
+  var result = readSheet('DataKaryawan');
   return result.objects;
 }
 
@@ -504,7 +504,7 @@ function handleGetAttendance(data) {
   var opsId = String(data.opsId || '').trim();
   if (!opsId) return [];
 
-  var sheet = getSheet('Attendance');
+  var sheet = getSheet('Absensi');
   if (!sheet) return [];
 
   var allData = sheet.getDataRange().getValues();
@@ -545,7 +545,7 @@ function handleGetPayslips(data) {
   var opsId = String(data.opsId || '').trim();
   if (!opsId) return [];
 
-  var sheet = getSheet('Payslips');
+  var sheet = getSheet('SlipGaji');
   if (!sheet) return [];
 
   var allData = sheet.getDataRange().getValues();
@@ -622,8 +622,8 @@ function handleGetSystemMessage() {
 // ═══════════════════════════════════════════════════════════════
 
 function handleAddEmployee(data) {
-  var sheet = getSheet('Employees');
-  if (!sheet) return { error: 'Sheet Employees tidak ditemukan. Jalankan setup terlebih dahulu.' };
+  var sheet = getSheet('DataKaryawan');
+  if (!sheet) return { error: 'Sheet DataKaryawan tidak ditemukan. Jalankan setup terlebih dahulu.' };
 
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   headers = headers.map(function(h) { return String(h).trim(); });
@@ -658,8 +658,8 @@ function handleUpdateEmployee(data) {
   var opsId = String(data.opsId || '').trim();
   if (!opsId) return { error: 'OPS ID wajib diisi' };
 
-  var sheet = getSheet('Employees');
-  if (!sheet) return { error: 'Sheet Employees tidak ditemukan' };
+  var sheet = getSheet('DataKaryawan');
+  if (!sheet) return { error: 'Sheet DataKaryawan tidak ditemukan' };
 
   var allData = sheet.getDataRange().getValues();
   var headers = allData[0].map(function(h) { return String(h).trim(); });
@@ -692,8 +692,8 @@ function handleDeleteEmployee(data) {
   var opsId = String(data.opsId || '').trim();
   if (!opsId) return { error: 'OPS ID wajib diisi' };
 
-  var sheet = getSheet('Employees');
-  if (!sheet) return { error: 'Sheet Employees tidak ditemukan' };
+  var sheet = getSheet('DataKaryawan');
+  if (!sheet) return { error: 'Sheet DataKaryawan tidak ditemukan' };
 
   var allData = sheet.getDataRange().getValues();
   var headers = allData[0].map(function(h) { return String(h).trim(); });
@@ -715,8 +715,8 @@ function handleDeleteEmployee(data) {
 // ═══════════════════════════════════════════════════════════════
 
 function handleAddAttendance(data) {
-  var sheet = getSheet('Attendance');
-  if (!sheet) return { error: 'Sheet Attendance tidak ditemukan. Jalankan setup terlebih dahulu.' };
+  var sheet = getSheet('Absensi');
+  if (!sheet) return { error: 'Sheet Absensi tidak ditemukan. Jalankan setup terlebih dahulu.' };
 
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   headers = headers.map(function(h) { return String(h).trim(); });
@@ -731,8 +731,8 @@ function handleAddAttendance(data) {
 // ═══════════════════════════════════════════════════════════════
 
 function handleAddPayslip(data) {
-  var sheet = getSheet('Payslips');
-  if (!sheet) return { error: 'Sheet Payslips tidak ditemukan. Jalankan setup terlebih dahulu.' };
+  var sheet = getSheet('SlipGaji');
+  if (!sheet) return { error: 'Sheet SlipGaji tidak ditemukan. Jalankan setup terlebih dahulu.' };
 
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   headers = headers.map(function(h) { return String(h).trim(); });
@@ -768,8 +768,8 @@ function handleUpdatePayslipStatus(data) {
     return { error: 'OPS ID, Period, dan Status wajib diisi' };
   }
 
-  var sheet = getSheet('Payslips');
-  if (!sheet) return { error: 'Sheet Payslips tidak ditemukan' };
+  var sheet = getSheet('SlipGaji');
+  if (!sheet) return { error: 'Sheet SlipGaji tidak ditemukan' };
 
   var allData = sheet.getDataRange().getValues();
   var headers = allData[0].map(function(h) { return String(h).trim(); });
@@ -777,7 +777,7 @@ function handleUpdatePayslipStatus(data) {
   var periodCol = findColumn(headers, 'Period');
   var statusCol = findColumn(headers, 'Status');
 
-  if (opsCol === -1) return { error: 'Kolom OPS tidak ditemukan di sheet Payslips' };
+  if (opsCol === -1) return { error: 'Kolom OPS tidak ditemukan di sheet SlipGaji' };
   if (statusCol === -1) return { error: 'Kolom Status tidak ditemukan di sheet Payslips' };
 
   var cleanReq = opsId.replace(/^OPS/i, '').trim();
