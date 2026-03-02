@@ -29,86 +29,186 @@
           NEW_API = DEFAULT_NEW_API;
         }
 
+        // ═══════════════════════════════════════════════════════════
+        //  FIELD NORMALIZER — Map GAS response fields ke React fields
+        //  GAS returns: ops, nama, jabatan, rekening, an, ...
+        //  React expects: opsId, name, position, accountNo, ...
+        // ═══════════════════════════════════════════════════════════
+        var FIELD_MAP = {
+          ops: 'opsId', opsId: 'opsId',
+          nama: 'name', name: 'name',
+          jabatan: 'position', position: 'position', posisi: 'position',
+          rekening: 'accountNo', nomorRekening: 'accountNo', accountNo: 'accountNo',
+          an: 'atasNama',
+          bank: 'bank', namaBank: 'bank',
+          nik: 'nik',
+          wa: 'wa', nomorWhatsapp: 'wa',
+          status: 'status',
+          join: 'join', tanggalBergabung: 'join',
+          station: 'station',
+          shift: 'shift', shifting: 'shift',
+          divisi: 'divisi',
+          hubDc: 'hubDc',
+          area: 'area'
+        };
+        function normalizeEmployee(obj) {
+          if (!obj || typeof obj !== 'object' || obj.error) return obj;
+          var out = {};
+          for (var key in obj) {
+            if (!obj.hasOwnProperty(key)) continue;
+            var mapped = FIELD_MAP[key] || key;
+            // Don't overwrite if already set (first match wins)
+            if (out[mapped] === undefined) out[mapped] = obj[key];
+          }
+          // Ensure critical fields exist — React crashes without name
+          if (!out.name && out.nama) out.name = out.nama;
+          if (!out.opsId && out.ops) out.opsId = out.ops;
+          if (!out.name) out.name = out.opsId || 'Unknown';
+          return out;
+        }
+        function normalizeResponse(action, data) {
+          if (action === 'login') return normalizeEmployee(data);
+          if (action === 'getAllEmployees' && Array.isArray(data)) return data.map(normalizeEmployee);
+          return data;
+        }
+
         var _originalFetch = window.fetch;
         window.fetch = function(url, options) {
           var urlStr = typeof url === "string" ? url : (url && url.url ? url.url : String(url));
 
-          // ===== OWNER / KORLAP LOGIN INTERCEPTOR =====
-          // Cek login terhadap sheet DataOwner via API
+          // Parse action from body for routing
+          var bodyAction = '';
           try {
             if (options && options.body) {
-              var parsed = JSON.parse(options.body);
-              if (parsed.action === 'login') {
-                var oid = (parsed.opsId || '').replace(/^OPS/i,'').trim();
-                var nk = (parsed.nik || '').trim();
-
-                // Call API to check DataOwner sheet
-                var ownerCheckUrl = NEW_API;
-                return _originalFetch.call(window, ownerCheckUrl, {
-                  method: 'POST',
-                  headers: {'Content-Type':'text/plain;charset=utf-8'},
-                  body: JSON.stringify({ action:'loginOwner', opsId: oid, nik: nk })
-                }).then(function(resp) {
-                  return resp.text();
-                }).then(function(text) {
-                  var data;
-                  try { data = JSON.parse(text); } catch(pe) {
-                    console.warn('[BAS] Owner check response not JSON:', text.substring(0,200));
-                    var newUrl2 = urlStr.indexOf(OLD_API) !== -1 ? urlStr.replace(OLD_API, NEW_API) : urlStr;
-                    return _originalFetch.call(window, newUrl2, options);
-                  }
-                  if (data && data.isOwner) {
-                    // Found in DataOwner sheet — store profile & redirect
-                    console.log('[BAS] Owner/Korlap login detected →', data.status, '| station:', data.station);
-                    sessionStorage.setItem('bas_owner_auth', 'true');
-                    sessionStorage.setItem('bas_owner_profile', JSON.stringify({
-                      ops: data.ops,
-                      nama: data.nama,
-                      station: data.station,
-                      status: data.status,
-                      wa: data.wa
-                    }));
-                    window.location.href = 'owner.html';
-                    return new Response(JSON.stringify({block:true}), {status:200});
-                  }
-                  // Not owner/korlap — proceed with normal employee login
-                  var newUrl2 = urlStr.indexOf(OLD_API) !== -1 ? urlStr.replace(OLD_API, NEW_API) : urlStr;
-                  return _originalFetch.call(window, newUrl2, options);
-                }).catch(function(err) {
-                  console.warn('[BAS] Owner check failed, falling back to normal login:', err);
-                  var newUrl3 = urlStr.indexOf(OLD_API) !== -1 ? urlStr.replace(OLD_API, NEW_API) : urlStr;
-                  return _originalFetch.call(window, newUrl3, options);
-                });
-              }
+              bodyAction = JSON.parse(options.body).action || '';
             }
           } catch(ex) {}
+
+          // ===== OWNER / KORLAP LOGIN INTERCEPTOR =====
+          // Cek login terhadap sheet DataOwner via API
+          if (bodyAction === 'login') {
+            var oid = '', nk = '';
+            try {
+              var parsed = JSON.parse(options.body);
+              oid = (parsed.opsId || '').replace(/^OPS/i,'').trim();
+              nk = (parsed.nik || '').trim();
+            } catch(ex) {}
+
+            // Call API to check DataOwner sheet
+            var ownerCheckUrl = NEW_API;
+            return _originalFetch.call(window, ownerCheckUrl, {
+              method: 'POST',
+              headers: {'Content-Type':'text/plain;charset=utf-8'},
+              body: JSON.stringify({ action:'loginOwner', opsId: oid, nik: nk })
+            }).then(function(resp) {
+              return resp.text();
+            }).then(function(text) {
+              var data;
+              try { data = JSON.parse(text); } catch(pe) {
+                console.warn('[BAS] Owner check response not JSON:', text.substring(0,200));
+                // Fall through to normal employee login
+                return doEmployeeLogin(urlStr, options);
+              }
+              if (data && data.isOwner) {
+                // Found in DataOwner sheet — store profile & redirect
+                console.log('[BAS] Owner/Korlap login detected →', data.status, '| station:', data.station);
+                sessionStorage.setItem('bas_owner_auth', 'true');
+                sessionStorage.setItem('bas_owner_profile', JSON.stringify({
+                  ops: data.ops,
+                  nama: data.nama,
+                  station: data.station,
+                  status: data.status,
+                  wa: data.wa
+                }));
+                window.location.href = 'owner.html';
+                return new Response(JSON.stringify({block:true}), {status:200});
+              }
+              // Not owner/korlap — proceed with normal employee login
+              return doEmployeeLogin(urlStr, options);
+            }).catch(function(err) {
+              console.warn('[BAS] Owner check failed, falling back to normal login:', err);
+              return doEmployeeLogin(urlStr, options);
+            });
+          }
 
           // Intercept jika URL mengandung OLD_API
           if (urlStr.indexOf(OLD_API) !== -1) {
             var newUrl = urlStr.replace(OLD_API, NEW_API);
-            // Parse body untuk logging
-            var action = "?";
-            try {
-              if (options && options.body) {
-                var b = JSON.parse(options.body);
-                action = b.action || "?";
-              }
-            } catch(e) {}
-            console.log("[BAS-API] " + action + " → redirected to new URL");
+            console.log("[BAS-API] " + (bodyAction||'?') + " → redirected to new URL");
 
-            return _originalFetch.call(this, newUrl, options).then(function(resp) {
-              console.log("[BAS-API] " + action + " → status " + resp.status);
+            return _originalFetch.call(window, newUrl, options).then(function(resp) {
+              console.log("[BAS-API] " + (bodyAction||'?') + " → status " + resp.status);
+              // Normalize employee-related responses
+              if (bodyAction === 'getAllEmployees') {
+                return resp.text().then(function(txt) {
+                  var d; try { d = JSON.parse(txt); } catch(e) { d = txt; }
+                  var normalized = normalizeResponse(bodyAction, d);
+                  return new Response(JSON.stringify(normalized), {
+                    status: resp.status,
+                    statusText: resp.statusText,
+                    headers: {'Content-Type':'application/json'}
+                  });
+                });
+              }
               return resp;
             }).catch(function(err) {
-              console.error("[BAS-API] " + action + " → ERROR:", err);
+              console.error("[BAS-API] " + (bodyAction||'?') + " → ERROR:", err);
               throw err;
             });
           }
 
-          return _originalFetch.apply(this, arguments);
+          return _originalFetch.apply(window, arguments);
         };
+
+        // Helper: Employee login with field normalization
+        function doEmployeeLogin(urlStr, options) {
+          var loginUrl = urlStr.indexOf(OLD_API) !== -1 ? urlStr.replace(OLD_API, NEW_API) : NEW_API;
+          return _originalFetch.call(window, loginUrl, options).then(function(resp) {
+            return resp.text().then(function(txt) {
+              var d; try { d = JSON.parse(txt); } catch(e) { d = {error: 'Invalid response'}; }
+              var normalized = normalizeResponse('login', d);
+              console.log('[BAS] Login response normalized:', Object.keys(normalized));
+              return new Response(JSON.stringify(normalized), {
+                status: resp.status,
+                statusText: resp.statusText,
+                headers: {'Content-Type':'application/json'}
+              });
+            });
+          });
+        }
+
         console.log("[BAS] Fetch interceptor aktif → API dialihkan ke URL baru");
         window.__basInterceptorActive = true;
+
+        // ═══════════════════════════════════════════════════════════
+        //  AUTO-FIX: Perbaiki session lama yang corrupt (tanpa field 'name')
+        //  React app crash jika user.name undefined
+        // ═══════════════════════════════════════════════════════════
+        try {
+          var session = localStorage.getItem('bas_session');
+          if (session) {
+            var decoded = JSON.parse(atob(session));
+            if (decoded && decoded.user) {
+              var u = decoded.user;
+              var needsFix = false;
+              // Normalize session user fields
+              if (!u.name && u.nama) { u.name = u.nama; needsFix = true; }
+              if (!u.opsId && u.ops) { u.opsId = u.ops; needsFix = true; }
+              if (!u.position && u.jabatan) { u.position = u.jabatan; needsFix = true; }
+              if (!u.accountNo && u.rekening) { u.accountNo = u.rekening; needsFix = true; }
+              if (!u.name) { u.name = u.opsId || u.ops || 'User'; needsFix = true; }
+              if (needsFix) {
+                decoded.user = u;
+                localStorage.setItem('bas_session', btoa(JSON.stringify(decoded)));
+                console.log('[BAS] Session diperbaiki: field names dinormalisasi');
+              }
+            }
+          }
+        } catch(e) {
+          // Session corrupt — hapus saja, user akan login ulang
+          localStorage.removeItem('bas_session');
+          console.warn('[BAS] Session corrupt, dihapus:', e);
+        }
       })();
       </script>
     <style>
