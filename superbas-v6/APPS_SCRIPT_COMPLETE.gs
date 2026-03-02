@@ -261,7 +261,8 @@ function handleLogin(data) {
 
 // ═══════════════════════════════════════════════════════════════
 //  ACTION: loginOwner — Owner/Korlap login (owner dashboard)
-//  DataOwner sheet: A=OPS | B=Nama | C=NIK | D=STATION | E=WA | F=STATUS
+//  DataOwner sheet with dynamic header mapping
+//  Expected headers: OPS, Nama, NIK, STATION, NOMOR WHATSAPP, STATUS
 // ═══════════════════════════════════════════════════════════════
 
 function handleLoginOwner(data) {
@@ -273,25 +274,43 @@ function handleLoginOwner(data) {
   var sheet = getSheet('DataOwner');
   if (!sheet) return { isOwner: false, error: 'DataOwner sheet not found' };
 
-  var rows = sheet.getDataRange().getValues();
-  for (var i = 1; i < rows.length; i++) {
-    var rowOps     = String(rows[i][0]).trim();
-    var rowNama    = String(rows[i][1]).trim();
-    var rowNik     = String(rows[i][2]).trim();
-    var rowStation = String(rows[i][3]).trim();
-    var rowWa      = String(rows[i][4]).trim();
-    var rowStatus  = String(rows[i][5]).trim().toUpperCase();
+  var allData = sheet.getDataRange().getValues();
+  if (allData.length < 2) return { isOwner: false, error: 'DataOwner sheet is empty' };
+
+  // Dynamic header mapping
+  var headers = allData[0].map(function(h) { return String(h).trim(); });
+  var opsCol = findColumn(headers, 'OPS');
+  var namaCol = findColumn(headers, 'Nama');
+  var nikCol = findColumn(headers, 'NIK');
+  var stationCol = findColumn(headers, 'STATION');
+  var waCol = findColumn(headers, 'NOMOR WHATSAPP');
+  var statusCol = findColumn(headers, 'STATUS');
+
+  if (opsCol === -1 || nikCol === -1 || statusCol === -1) {
+    return { isOwner: false, error: 'DataOwner sheet missing required columns (OPS, NIK, or STATUS)' };
+  }
+
+  // Search for matching owner/korlap
+  for (var i = 1; i < allData.length; i++) {
+    var rowOps = String(allData[i][opsCol] || '').trim();
+    var rowNik = String(allData[i][nikCol] || '').trim();
+    var rowStatus = String(allData[i][statusCol] || '').trim().toUpperCase();
+
+    // Skip empty rows
+    if (!rowOps && !rowNik) continue;
 
     if (rowOps === opsId && rowNik === nik) {
       if (rowStatus === 'OWNER' || rowStatus === 'KORLAP') {
         return {
           isOwner: true,
           ops: rowOps,
-          nama: rowNama,
-          station: rowStation,
+          nama: namaCol !== -1 ? String(allData[i][namaCol] || '').trim() : '',
+          station: stationCol !== -1 ? String(allData[i][stationCol] || '').trim() : '',
           status: rowStatus,
-          wa: rowWa
+          wa: waCol !== -1 ? String(allData[i][waCol] || '').trim() : ''
         };
+      } else {
+        return { isOwner: false, error: 'User found but status is not OWNER or KORLAP' };
       }
     }
   }
