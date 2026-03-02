@@ -690,11 +690,11 @@ function showDbBanner(){
   if(!dbStatus.connected){
     banner.style.background='linear-gradient(135deg,#dc2626,#b91c1c)';
     banner.style.color='#fff';
-    banner.innerHTML='⚠ TIDAK TERHUBUNG KE DATABASE — Periksa URL API di menu <a onclick="go(\'settings\')" style="text-decoration:underline;cursor:pointer;color:#fff">Pengaturan API</a>. <span style="font-weight:400;opacity:0.8">('+( dbStatus.error||'Unknown error')+')</span> <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
+    banner.innerHTML='⚠ TIDAK TERHUBUNG KE DATABASE — <a onclick="go(\'settings\')" style="text-decoration:underline;cursor:pointer;color:#fff;font-weight:900">Buka Pengaturan API →</a> <span style="font-weight:400;opacity:0.8">('+( dbStatus.error||'Unknown error')+')</span> <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
   } else if(dbStatus.emptySheetsWarning){
     banner.style.background='linear-gradient(135deg,#f59e0b,#d97706)';
     banner.style.color='#fff';
-    banner.innerHTML='⚠ DATABASE TERHUBUNG tapi BELUM ADA DATA — Buka <a onclick="go(\'settings\')" style="text-decoration:underline;cursor:pointer;color:#fff">Pengaturan API</a> lalu klik "Diagnosa Koneksi" untuk cek sheet. <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
+    banner.innerHTML='⚠ API TERHUBUNG TAPI DATA KOSONG — Sheet Employees/Attendance/Payslips belum terisi. <a onclick="go(\'settings\')" style="text-decoration:underline;cursor:pointer;color:#fff;font-weight:900">Buka Diagnostik →</a> <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
   } else {
     banner.style.background='linear-gradient(135deg,#10b981,#059669)';
     banner.style.color='#fff';
@@ -2725,105 +2725,194 @@ function resetApiUrl(){
 
 async function runDiagnose(){
   const dr = document.getElementById('diagnoseResult');
-  dr.innerHTML = '<p class="text-accent-cyan animate-pulse">⏳ Menjalankan diagnostik...</p>';
+  dr.innerHTML = '<p class="text-accent-cyan animate-pulse">⏳ Menjalankan diagnostik lengkap...</p>';
+  
+  const results = {};
+  const log = [];
   
   try {
-    // 1. Health Check
+    // ── STEP 1: Health Check (GET) ──
+    log.push('🔄 Testing health check (GET)...');
     let healthOk = false;
+    let healthData = null;
     try {
       const hc = await fetch(API, {method:'GET', headers:{'Accept':'application/json'}});
       if(hc.ok) {
-        const hj = await hc.json();
-        healthOk = hj && hj.status === 'ONLINE';
+        healthData = await hc.json();
+        healthOk = healthData && healthData.status === 'ONLINE';
       }
-    } catch(e) {}
+    } catch(e) { log.push('❌ Health check error: ' + e.message); }
+    results.health = { ok: healthOk, data: healthData };
 
     if(!healthOk) {
       dr.innerHTML = `
-        <div class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 space-y-2">
-          <p class="text-red-400 font-bold">❌ API TIDAK TERHUBUNG</p>
-          <p>URL API tidak merespons atau tidak valid.</p>
-          <p class="text-white">URL: <code class="text-accent-cyan/70 break-all">${API}</code></p>
-          <p class="mt-2 font-bold text-accent-orange">Solusi:</p>
-          <p>1. Pastikan sudah deploy Apps Script sebagai Web App</p>
-          <p>2. Pastikan "Who has access" diset ke "Anyone"</p>
-          <p>3. Paste URL deployment yang benar di kolom di atas</p>
+        <div class="p-4 rounded-xl bg-red-500/10 border border-red-500/30 space-y-3">
+          <p class="text-red-400 font-bold text-sm">❌ API TIDAK TERHUBUNG</p>
+          <p class="text-slate-400">URL API tidak merespons atau tidak valid.</p>
+          <p class="text-white break-all">URL: <code class="text-accent-cyan/70">${API}</code></p>
+          <div class="mt-3 p-3 rounded-lg bg-white/5 space-y-2">
+            <p class="text-accent-orange font-bold">🔧 Solusi:</p>
+            <p class="text-slate-400">1. Pastikan sudah men-deploy Apps Script sebagai Web App</p>
+            <p class="text-slate-400">2. Pastikan "Who has access" = <strong class="text-white">Anyone</strong></p>
+            <p class="text-slate-400">3. Paste URL deployment yang benar di kolom URL di atas</p>
+            <p class="text-slate-400">4. Klik <strong class="text-accent-cyan">Simpan & Muat Ulang</strong></p>
+          </div>
         </div>`;
       return;
     }
+    log.push('✅ Health check OK: v' + (healthData?.version||'?'));
     
-    // 2. Diagnose sheets
+    // ── STEP 2: Test getAllEmployees ──
+    log.push('🔄 Testing getAllEmployees...');
+    const empData = await api('getAllEmployees');
+    const empArr = Array.isArray(empData) ? empData : [];
+    const empError = empData?.error || null;
+    results.employees = { count: empArr.length, error: empError, sample: empArr.slice(0,2) };
+    log.push(empError ? '❌ Employees error: ' + empError : '📊 Employees: ' + empArr.length + ' records');
+
+    // ── STEP 3: Test getAttendance (with first employee if available) ──
+    let attCount = 0;
+    if(empArr.length > 0 && empArr[0].opsId) {
+      log.push('🔄 Testing getAttendance for ' + empArr[0].opsId + '...');
+      const attData = await api('getAttendance', {opsId: empArr[0].opsId});
+      attCount = Array.isArray(attData) ? attData.length : 0;
+      results.attendance = { count: attCount, sample: (Array.isArray(attData) ? attData.slice(0,2) : []) };
+      log.push('📊 Attendance for ' + empArr[0].opsId + ': ' + attCount + ' records');
+    } else {
+      log.push('⏭ Skipping attendance test (no employees found)');
+      results.attendance = { count: 0, skipped: true };
+    }
+
+    // ── STEP 4: Test diagnose (if deployed) ──
+    log.push('🔄 Testing diagnose action (opsional)...');
     const diagResp = await api('diagnose');
-    
-    if(!diagResp || diagResp.error){
-      dr.innerHTML = `
-        <div class="p-3 rounded-xl bg-accent-orange/10 border border-accent-orange/30 space-y-2">
-          <p class="text-accent-orange font-bold">⚠ API Online tapi DIAGNOSE gagal</p>
-          <p class="text-slate-400">Error: ${diagResp?.error || 'Tidak ada respons'}</p>
-          <p class="text-slate-400 mt-2">Kemungkinan Apps Script belum ter-deploy ulang setelah ditambahkan action 'diagnose'.</p>
-          <p class="text-white font-bold">Solusi: Copy ulang APPS_SCRIPT_COMPLETE.gs ke Apps Script, lalu buat New Deployment.</p>
-        </div>`;
-      return;
+    const diagOk = diagResp && !diagResp.error && diagResp.sheets;
+    results.diagnose = diagOk ? diagResp : null;
+    if(diagOk) {
+      log.push('✅ Diagnose OK: ' + diagResp.sheets.length + ' sheets found');
+    } else {
+      log.push('⚠ Diagnose not available: ' + (diagResp?.error || 'belum di-deploy'));
     }
+
+    // ── STEP 5: Test setup action ──
+    log.push('🔄 Testing setup action...');
+    const setupResp = await api('setup');
+    results.setup = setupResp;
+    log.push(setupResp?.status === 'Success' ? '✅ Setup: ' + setupResp.message : '⚠ Setup: ' + (setupResp?.error || 'unknown'));
+
+    // ── RENDER RESULTS ──
+    const isDataEmpty = empArr.length === 0;
+    const apiVersion = healthData?.version || '?';
     
-    // 3. Show results
-    const required = ['Employees', 'Attendance', 'Payslips', 'DataOwner', 'SystemMessage'];
-    const missing = diagResp.missingSheets || [];
-    const sheetsHtml = (diagResp.sheets||[]).map(s => {
-      const isRequired = required.includes(s.name);
-      const statusColor = s.rows > 0 ? 'text-accent-green' : 'text-accent-orange';
-      const statusIcon = s.rows > 0 ? '✅' : '⚠️';
-      return `<tr class="trow border-b border-white/5">
-        <td class="py-2 px-3 ${isRequired?'text-white font-bold':'text-slate-400'}">${s.name} ${isRequired?'<span class="chip chip-cyan text-[8px]">required</span>':''}</td>
-        <td class="py-2 px-3 ${statusColor} font-bold">${statusIcon} ${s.rows} baris data</td>
-        <td class="py-2 px-3 text-slate-500">${s.columns} kolom</td>
-        <td class="py-2 px-3 text-slate-500 text-[10px]">${(s.headers||[]).slice(0,5).join(', ')}${s.headers?.length>5?'...':''}</td>
-      </tr>`;
-    }).join('');
-    
-    const missingHtml = missing.length > 0 
-      ? `<div class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 mt-3">
-          <p class="text-red-400 font-bold">❌ Sheet yang hilang: ${missing.join(', ')}</p>
-          <p class="text-slate-400 mt-1">Klik tombol di bawah untuk membuat sheet yang hilang secara otomatis.</p>
-          <button onclick="runSetup()" class="mt-2 px-4 py-2 rounded-xl bg-accent-pink/20 text-accent-pink text-xs font-bold border border-accent-pink/30 hover:bg-accent-pink/30 transition-all">
-            🛠 Setup - Buat Sheet yang Hilang
-          </button>
-        </div>` 
-      : '<p class="text-accent-green mt-3">✅ Semua sheet yang dibutuhkan sudah ada!</p>';
-    
-    const emptySheets = (diagResp.sheets||[]).filter(s => required.includes(s.name) && s.rows === 0);
-    const emptyWarning = emptySheets.length > 0
-      ? `<div class="p-3 rounded-xl bg-accent-orange/10 border border-accent-orange/30 mt-3">
-          <p class="text-accent-orange font-bold">⚠ Sheet kosong (belum ada data):</p>
-          <p class="text-slate-400 mt-1">${emptySheets.map(s=>s.name).join(', ')}</p>
-          <p class="text-slate-400 mt-1">Pastikan data sudah diisi di Google Sheets, atau tambahkan data via menu Karyawan.</p>
-        </div>` : '';
-    
+    // Diagnose sheet table (if available)
+    let sheetsTable = '';
+    if(results.diagnose && results.diagnose.sheets) {
+      const required = ['Employees', 'Attendance', 'Payslips', 'DataOwner', 'SystemMessage'];
+      sheetsTable = `
+        <div class="mt-4 p-3 rounded-xl bg-white/3 border border-white/5">
+          <p class="font-bold text-white mb-2">📋 Daftar Sheet di Spreadsheet:</p>
+          <p class="text-slate-500 mb-2">Spreadsheet: <strong class="text-white">${results.diagnose.spreadsheetName||'?'}</strong>
+            ${results.diagnose.spreadsheetUrl ? ' — <a href="'+results.diagnose.spreadsheetUrl+'" target="_blank" class="text-accent-cyan hover:underline">Buka ↗</a>' : ''}</p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead><tr class="border-b border-white/10 text-slate-500">
+                <th class="text-left py-1.5 px-2">Sheet</th>
+                <th class="text-left py-1.5 px-2">Baris Data</th>
+                <th class="text-left py-1.5 px-2">Kolom</th>
+                <th class="text-left py-1.5 px-2">Headers</th>
+              </tr></thead>
+              <tbody>${results.diagnose.sheets.map(s => {
+                const isReq = required.includes(s.name);
+                const clr = s.rows > 0 ? 'text-accent-green' : 'text-accent-orange';
+                return '<tr class="border-b border-white/5"><td class="py-1.5 px-2 '+(isReq?'text-white font-bold':'text-slate-400')+'">'+s.name+(isReq?' <span class="chip chip-cyan text-[8px]">required</span>':'')+'</td><td class="py-1.5 px-2 '+clr+' font-bold">'+(s.rows>0?'✅':'⚠️')+' '+s.rows+'</td><td class="py-1.5 px-2 text-slate-500">'+s.columns+'</td><td class="py-1.5 px-2 text-slate-500 text-[10px]">'+(s.headers||[]).slice(0,4).join(', ')+(s.headers?.length>4?'...':'')+'</td></tr>';
+              }).join('')}</tbody>
+            </table>
+          </div>
+          ${(results.diagnose.missingSheets||[]).length > 0 ? '<p class="text-red-400 mt-2 font-bold">❌ Sheet hilang: '+(results.diagnose.missingSheets||[]).join(', ')+'</p>' : '<p class="text-accent-green mt-2">✅ Semua required sheet ada</p>'}
+        </div>`;
+    }
+
+    // Employee sample  
+    let empSample = '';
+    if(empArr.length > 0) {
+      const sample = empArr.slice(0,3);
+      const keys = Object.keys(sample[0]).slice(0,6);
+      empSample = `
+        <div class="mt-4 p-3 rounded-xl bg-white/3 border border-white/5">
+          <p class="font-bold text-white mb-2">👥 Sample Data Karyawan (${empArr.length} total):</p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead><tr class="border-b border-white/10 text-slate-500">${keys.map(k=>'<th class="text-left py-1 px-2">'+k+'</th>').join('')}</tr></thead>
+              <tbody>${sample.map(e => '<tr class="border-b border-white/5">'+keys.map(k=>'<td class="py-1 px-2 text-slate-300">'+((e[k]!==null&&e[k]!==undefined)?String(e[k]).substring(0,25):'—')+'</td>').join('')+'</tr>').join('')}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    // Main result
+    const statusColor = isDataEmpty ? 'accent-orange' : 'accent-green';
+    const statusIcon = isDataEmpty ? '⚠️' : '✅';
+    const statusText = isDataEmpty ? 'API TERHUBUNG, TAPI DATA KOSONG' : 'SEMUA BERFUNGSI NORMAL';
+
     dr.innerHTML = `
       <div class="space-y-3">
-        <div class="p-3 rounded-xl bg-accent-green/10 border border-accent-green/30">
-          <p class="text-accent-green font-bold">✅ API TERHUBUNG</p>
-          <p class="text-slate-400 mt-1">Spreadsheet: <strong class="text-white">${diagResp.spreadsheetName||'?'}</strong></p>
-          <p class="text-slate-400">ID: <code class="text-slate-500">${diagResp.spreadsheetId||'?'}</code></p>
-          <p class="text-slate-400">URL: <a href="${diagResp.spreadsheetUrl||'#'}" target="_blank" class="text-accent-cyan hover:underline">${diagResp.spreadsheetUrl?'Buka Spreadsheet ↗':'-'}</a></p>
+        <!-- Status Utama -->
+        <div class="p-4 rounded-xl bg-${statusColor}/10 border border-${statusColor}/30">
+          <p class="text-${statusColor} font-bold text-sm">${statusIcon} ${statusText}</p>
+          <p class="text-slate-400 mt-1">API Version: <strong class="text-white">${apiVersion}</strong> | Employees: <strong class="text-white">${empArr.length}</strong></p>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-xs">
-            <thead><tr class="border-b border-white/10 text-slate-500">
-              <th class="text-left py-2 px-3">Sheet</th>
-              <th class="text-left py-2 px-3">Data</th>
-              <th class="text-left py-2 px-3">Kolom</th>
-              <th class="text-left py-2 px-3">Headers (5 pertama)</th>
-            </tr></thead>
-            <tbody>${sheetsHtml}</tbody>
-          </table>
+
+        ${isDataEmpty ? `
+        <!-- PANDUAN MENGATASI DATA KOSONG -->
+        <div class="p-4 rounded-xl bg-red-500/10 border border-red-500/30 space-y-3">
+          <p class="text-red-400 font-bold text-sm">🔍 KENAPA DATA KOSONG?</p>
+          <div class="text-slate-400 space-y-2">
+            <p>API Anda terhubung dan bekerja, tapi sheet <strong class="text-white">Employees</strong> di Google Sheets kosong atau tidak ditemukan.</p>
+            
+            <div class="p-3 rounded-lg bg-white/5 space-y-2">
+              <p class="text-accent-pink font-bold">Kemungkinan Penyebab:</p>
+              <p>❶ <strong class="text-white">Apps Script terpasang di spreadsheet yang salah</strong> — Apps Script harus di-deploy dari spreadsheet yang BERISI data karyawan (bukan spreadsheet kosong baru)</p>
+              <p>❷ <strong class="text-white">Nama sheet tidak sesuai</strong> — Sheet harus bernama persis: <code class="text-accent-cyan">Employees</code>, <code class="text-accent-cyan">Attendance</code>, <code class="text-accent-cyan">Payslips</code></p>
+              <p>❸ <strong class="text-white">Sheet ada tapi kosong</strong> — Belum ada data di baris ke-2 dan seterusnya</p>
+              <p>❹ <strong class="text-white">Format header salah</strong> — Baris pertama harus berisi header kolom (OPS ID, NIK, Name, dll)</p>
+            </div>
+
+            <div class="p-3 rounded-lg bg-accent-cyan/5 border border-accent-cyan/20 space-y-2">
+              <p class="text-accent-cyan font-bold">🔧 Cara Memperbaiki:</p>
+              <p>1. Buka spreadsheet tempat Anda men-deploy Apps Script</p>
+              <p>2. Pastikan ada sheet bernama <strong class="text-white">Employees</strong> dengan data di dalamnya</p>
+              <p>3. Jika data Anda ada di spreadsheet lain (misalnya "REKAP DW"), Anda perlu:</p>
+              <p class="pl-4">a. Buka spreadsheet yang berisi data → Extensions → Apps Script</p>
+              <p class="pl-4">b. Paste kode APPS_SCRIPT_COMPLETE.gs → Deploy → New deployment</p>
+              <p class="pl-4">c. Copy URL deployment baru → paste di kolom URL API di atas</p>
+              <p>4. Setelah deploy ulang, klik <strong class="text-accent-cyan">Simpan & Muat Ulang</strong></p>
+            </div>
+          </div>
+        </div>` : ''}
+
+        ${sheetsTable}
+        ${empSample}
+
+        <!-- Log Detail -->
+        <div class="p-3 rounded-xl bg-white/3 border border-white/5">
+          <p class="font-bold text-white mb-2">📝 Log Diagnostik:</p>
+          <div class="font-mono text-[10px] text-slate-500 space-y-0.5">${log.map(l=>'<p>'+l+'</p>').join('')}</div>
         </div>
-        ${missingHtml}
-        ${emptyWarning}
+
+        <!-- Quick Actions -->
+        <div class="flex flex-wrap gap-2">
+          <button onclick="runSetup()" class="px-4 py-2 rounded-xl bg-accent-pink/20 text-accent-pink text-xs font-bold border border-accent-pink/30 hover:bg-accent-pink/30 transition-all">
+            🛠 Setup - Buat Sheet yang Hilang
+          </button>
+          <button onclick="reloadData()" class="px-4 py-2 rounded-xl bg-accent-cyan/20 text-accent-cyan text-xs font-bold border border-accent-cyan/30 hover:bg-accent-cyan/30 transition-all">
+            🔄 Muat Ulang Data
+          </button>
+        </div>
       </div>`;
   } catch(e) {
-    dr.innerHTML = `<div class="p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+    dr.innerHTML = `<div class="p-4 rounded-xl bg-red-500/10 border border-red-500/30">
       <p class="text-red-400 font-bold">❌ Error: ${e.message}</p>
+      <p class="text-slate-400 mt-2">Stack: ${e.stack||'-'}</p>
     </div>`;
   }
 }
@@ -2835,6 +2924,19 @@ async function runSetup(){
     runDiagnose();
   } else {
     alert('Setup gagal: ' + (r?.error || 'Unknown'));
+  }
+}
+
+async function reloadData(){
+  const loaderEl=document.getElementById('loader');
+  if(loaderEl) loaderEl.classList.remove('hidden');
+  employees=[];attMap={};payMap={};
+  dbStatus = { connected: false, error: null, emptySheetsWarning: false };
+  await loadAll();
+  if(loaderEl) loaderEl.classList.add('hidden');
+  rSettings();
+  if(employees.length > 0) {
+    go('overview');
   }
 }
 
@@ -2861,7 +2963,15 @@ async function init(){
   
   if(loaderMsg && dbStatus.connected) loaderMsg.textContent='Merender Dashboard & DL Engine...';
   loaderEl?.classList.add('hidden');
-  go('overview');
+  
+  // Auto-navigate to settings if data is empty or not connected
+  if(!dbStatus.connected || dbStatus.emptySheetsWarning){
+    go('settings');
+    // Auto-run diagnose after a short delay
+    setTimeout(()=>{ if(typeof runDiagnose==='function') runDiagnose(); }, 500);
+  } else {
+    go('overview');
+  }
 }
 
 function applyRoleUI() {
