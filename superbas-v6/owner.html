@@ -445,6 +445,36 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════
+//  GLOBAL ERROR HANDLER — catch ANY crash and show on screen
+// ═══════════════════════════════════════════════════════════════
+window.onerror = function(msg, src, line, col, err) {
+  console.error('[BAS CRASH]', msg, src, line, col, err);
+  var el = document.getElementById('loader');
+  if (el) {
+    el.innerHTML = '<div style="text-align:left;padding:20px;max-width:600px;margin:auto">'
+      + '<h2 style="color:#f72585;margin-bottom:10px">⚠ Dashboard Error</h2>'
+      + '<p style="color:#fff;font-size:13px;margin-bottom:8px">' + msg + '</p>'
+      + '<p style="color:#94a3b8;font-size:11px">Line: ' + line + ' | Col: ' + col + '</p>'
+      + '<p style="color:#94a3b8;font-size:11px;word-break:break-all">Source: ' + (src||'?') + '</p>'
+      + (err && err.stack ? '<pre style="color:#4cc9f0;font-size:10px;margin-top:10px;white-space:pre-wrap;max-height:200px;overflow:auto">' + err.stack + '</pre>' : '')
+      + '<button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:#f72585;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:bold">↻ Reload</button>'
+      + '</div>';
+  }
+};
+window.addEventListener('unhandledrejection', function(e) {
+  console.error('[BAS PROMISE CRASH]', e.reason);
+  var el = document.getElementById('loader');
+  if (el) {
+    el.innerHTML = '<div style="text-align:left;padding:20px;max-width:600px;margin:auto">'
+      + '<h2 style="color:#f72585;margin-bottom:10px">⚠ Async Error</h2>'
+      + '<p style="color:#fff;font-size:13px;margin-bottom:8px">' + (e.reason && e.reason.message ? e.reason.message : String(e.reason)) + '</p>'
+      + (e.reason && e.reason.stack ? '<pre style="color:#4cc9f0;font-size:10px;margin-top:10px;white-space:pre-wrap;max-height:200px;overflow:auto">' + e.reason.stack + '</pre>' : '')
+      + '<button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:#f72585;color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:bold">↻ Reload</button>'
+      + '</div>';
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
 //  THEME: LIGHT / DARK MODE
 // ═══════════════════════════════════════════════════════════════
 function getTheme() {
@@ -3622,16 +3652,21 @@ async function reloadData(){
 //  INIT
 // ═══════════════════════════════════════════════════════════════
 async function init(){
+  console.log('[BAS] init() started');
   // Check auth
   if(sessionStorage.getItem('bas_owner_auth')!=='true'){
+    console.log('[BAS] Auth check failed, redirecting to index.html');
     window.location.href='index.html';
     return;
   }
+  console.log('[BAS] Auth OK');
   
   // Apply role-based UI
   applyRoleUI();
+  console.log('[BAS] applyRoleUI done');
   
   buildNav();
+  console.log('[BAS] buildNav done');
   const loaderEl=document.getElementById('loader');
   const loaderMsg=loaderEl?.querySelector('p');
   loaderEl?.classList.remove('hidden');
@@ -3680,6 +3715,7 @@ function applyRoleUI() {
   if (ms) ms.textContent = isKorlap ? 'Korlap — ' + korlapStation : roleLabel;
 }
 
+console.log('[BAS] Calling init()...');
 init();
 
 // Retry Chart.js init if CDN was slow
