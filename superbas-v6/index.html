@@ -121,7 +121,9 @@
                   wa: data.wa
                 }));
                 window.location.href = 'owner.html';
-                return new Response(JSON.stringify({block:true}), {status:200});
+                // Return promise yang tidak pernah resolve — mencegah React
+                // menyimpan session corrupt sebelum halaman redirect
+                return new Promise(function(){});
               }
               // Not owner/korlap — proceed with normal employee login
               return doEmployeeLogin(urlStr, options);

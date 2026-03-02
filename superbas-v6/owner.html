@@ -1051,7 +1051,12 @@ function go(tab){
   const R={overview:rOverview,employees:rEmployees,attendance:rAttendance,payroll:rPayroll,ds:rDS,idcard:rIDCard,settings:rSettings};
   R[tab]?.();
 }
-function logout(){sessionStorage.removeItem('bas_owner_auth');sessionStorage.removeItem('bas_owner_profile');window.location.href='index.html';}
+function logout(){
+  sessionStorage.removeItem('bas_owner_auth');
+  sessionStorage.removeItem('bas_owner_profile');
+  localStorage.removeItem('bas_session');
+  window.location.replace('index.html');
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  HELPER: Table Sort
