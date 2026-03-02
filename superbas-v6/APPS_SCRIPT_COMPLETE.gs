@@ -58,6 +58,8 @@ function doPost(e) {
       case 'updatePayslipStatus':return jsonResponse(handleUpdatePayslipStatus(data));
       case 'setup':              return jsonResponse(handleSetup());
       case 'diagnose':           return jsonResponse(handleDiagnose());
+      case 'getAllAttendance':    return jsonResponse(handleGetAllAttendance());
+      case 'getAllPayslips':      return jsonResponse(handleGetAllPayslips());
       case 'getAllData':          return jsonResponse(handleGetAllData());
       case 'discoverSheets':     return jsonResponse(handleDiscoverSheets());
       default:                   return jsonResponse({ error: 'Unknown action: ' + action });
@@ -500,6 +502,24 @@ function handleGetAllEmployees() {
 //  ACTION: getAttendance — Dynamic header + filter OPS ID
 // ═══════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════
+//  ACTION: getAllAttendance — Bulk load ALL attendance (no filter)
+// ═══════════════════════════════════════════════════════════════
+
+function handleGetAllAttendance() {
+  var result = readSheet('Absensi');
+  return result.objects;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ACTION: getAllPayslips — Bulk load ALL payslips (no filter)
+// ═══════════════════════════════════════════════════════════════
+
+function handleGetAllPayslips() {
+  var result = readSheet('SlipGaji');
+  return result.objects;
+}
+
 function handleGetAttendance(data) {
   var opsId = String(data.opsId || '').trim();
   if (!opsId) return [];
@@ -778,7 +798,7 @@ function handleUpdatePayslipStatus(data) {
   var statusCol = findColumn(headers, 'Status');
 
   if (opsCol === -1) return { error: 'Kolom OPS tidak ditemukan di sheet SlipGaji' };
-  if (statusCol === -1) return { error: 'Kolom Status tidak ditemukan di sheet Payslips' };
+  if (statusCol === -1) return { error: 'Kolom Status tidak ditemukan di sheet SlipGaji' };
 
   var cleanReq = opsId.replace(/^OPS/i, '').trim();
   var updated = 0;

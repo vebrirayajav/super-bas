@@ -23,6 +23,12 @@
         // ╚══════════════════════════════════════════════════════════╝
         var DEFAULT_NEW_API = "https://script.google.com/macros/s/AKfycbzyZ5HEZl9zGYTS28kEIqO8ovJAUArsLkeobDZQWW0sUP-CDyY3GoL0FZnxisBcL-Y1/exec";
         var NEW_API = localStorage.getItem('bas_api_url') || DEFAULT_NEW_API;
+        // Auto-clear stale localStorage URL if it doesn't look valid
+        var storedUrl = localStorage.getItem('bas_api_url');
+        if(storedUrl && storedUrl.indexOf('script.google.com') === -1) {
+          localStorage.removeItem('bas_api_url');
+          NEW_API = DEFAULT_NEW_API;
+        }
 
         var _originalFetch = window.fetch;
         window.fetch = function(url, options) {
@@ -44,8 +50,14 @@
                   headers: {'Content-Type':'text/plain;charset=utf-8'},
                   body: JSON.stringify({ action:'loginOwner', opsId: oid, nik: nk })
                 }).then(function(resp) {
-                  return resp.json();
-                }).then(function(data) {
+                  return resp.text();
+                }).then(function(text) {
+                  var data;
+                  try { data = JSON.parse(text); } catch(pe) {
+                    console.warn('[BAS] Owner check response not JSON:', text.substring(0,200));
+                    var newUrl2 = urlStr.indexOf(OLD_API) !== -1 ? urlStr.replace(OLD_API, NEW_API) : urlStr;
+                    return _originalFetch.call(window, newUrl2, options);
+                  }
                   if (data && data.isOwner) {
                     // Found in DataOwner sheet — store profile & redirect
                     console.log('[BAS] Owner/Korlap login detected →', data.status, '| station:', data.station);

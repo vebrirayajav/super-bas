@@ -652,11 +652,12 @@ let dbStatus = { connected: false, error: null, emptySheetsWarning: false };
 
 async function api(action,params={}){
   try{
-    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,...params})});
+    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,...params}),redirect:'follow'});
     if(!r.ok) throw new Error('HTTP '+r.status);
-    const j=await r.json();
-    if(j && j.error) { console.warn('API error ('+action+'):', j.error); return j; }
-    return j;
+    const text=await r.text();
+    if(!text) return null;
+    try{ const j=JSON.parse(text); if(j && j.error) { console.warn('API error ('+action+'):', j.error); return j; } return j; }
+    catch(pe){ console.error('API parse error ('+action+'):', text.substring(0,200)); return null; }
   }
   catch(e){console.error('API ('+action+'):', e); return null;}
 }
@@ -665,7 +666,8 @@ async function healthCheck(){
   try{
     const r=await fetch(API,{method:'GET',headers:{'Accept':'application/json'}});
     if(!r.ok) throw new Error('HTTP '+r.status);
-    const j=await r.json();
+    const text=await r.text();
+    const j=JSON.parse(text);
     if(j && j.status==='ONLINE'){
       dbStatus.connected=true;
       console.log('[BAS] Database connected ✓ version:', j.version);
@@ -673,6 +675,24 @@ async function healthCheck(){
     }
     throw new Error('Unexpected response: '+JSON.stringify(j));
   }catch(e){
+    // If localStorage URL fails, try DEFAULT_API as fallback
+    if(API !== DEFAULT_API){
+      console.warn('[BAS] localStorage URL gagal, fallback ke DEFAULT_API...');
+      API = DEFAULT_API;
+      localStorage.removeItem('bas_api_url');
+      try{
+        const r2=await fetch(API,{method:'GET',headers:{'Accept':'application/json'}});
+        if(r2.ok){
+          const t2=await r2.text();
+          const j2=JSON.parse(t2);
+          if(j2 && j2.status==='ONLINE'){
+            dbStatus.connected=true;
+            console.log('[BAS] Fallback ke DEFAULT_API berhasil ✓');
+            return true;
+          }
+        }
+      }catch(e2){}
+    }
     dbStatus.connected=false;
     dbStatus.error=e.message||String(e);
     console.error('[BAS] Database connection failed:', e);
@@ -903,41 +923,92 @@ async function loadAll(){
     if(!e.phone && e.wa) e.phone = e.wa;
     if(!e.bankAccount && e.rekening) e.bankAccount = e.rekening;
     if(!e.bankName && e.namaBank) e.bankName = e.namaBank;
+    if(!e.bankName && e.bank) e.bankName = e.bank;
     if(!e.station && e.hubDc) e.station = e.hubDc;
     if(!e.joinDate && e.join) e.joinDate = e.join;
+    if(!e.an && e.atasNama) e.an = e.atasNama;
   });
   
-  // 4. Load attendance & payslips per employee (only if NOT auto-discovered)
+  // 4. BULK load attendance & payslips (2 calls instead of 2000!)
   if(!usedAutoDiscovery && employees.length > 0) {
-    const proms=employees.map(async e=>{
-      const[a,p]=await Promise.all([api('getAttendance',{opsId:e.opsId}),api('getPayslips',{opsId:e.opsId})]);
-      // Normalize attendance fields
-      const normA = (Array.isArray(a)?a:[]).map(r => {
-        if(!r.opsId && r.opsid) r.opsId = r.opsid;
-        if(!r.opsId && r.ops) r.opsId = r.ops;
-        if(!r.name && r.namaLengkap) r.name = r.namaLengkap;
-        if(!r.name && r.nama) r.name = r.nama;
-        return r;
-      });
-      // Normalize payslip fields
-      const normP = (Array.isArray(p)?p:[]).map(r => {
-        if(!r.opsId && r.ops) r.opsId = r.ops;
-        if(!r.opsId && r.opsid) r.opsId = r.opsid;
-        if(!r.name && r.nama) r.name = r.nama;
-        // totalYangDibayarkan → totalDibayarkan
-        if(r.totalDibayarkan === undefined && r.totalYangDibayarkan !== undefined) r.totalDibayarkan = r.totalYangDibayarkan;
-        // Ensure numeric
-        if(typeof r.totalDibayarkan === 'string') r.totalDibayarkan = parseFloat(r.totalDibayarkan.replace(/[^\d.-]/g,''))||0;
-        if(!r.totalDibayarkan && r.gaji) r.totalDibayarkan = typeof r.gaji === 'number' ? r.gaji : parseFloat(String(r.gaji).replace(/[^\d.-]/g,''))||0;
-        if(!r.station && r.hubDc) r.station = r.hubDc;
-        // period: try to extract from other fields if missing
-        if(!r.period && r.periode) r.period = r.periode;
-        return r;
-      });
-      attMap[e.opsId]=normA;
-      payMap[e.opsId]=normP;
+    console.log('[BAS] Bulk loading attendance & payslips...');
+    const [allAttData, allPayData] = await Promise.all([
+      api('getAllAttendance'),
+      api('getAllPayslips')
+    ]);
+    
+    // Normalize & group attendance by opsId
+    const attArr = Array.isArray(allAttData) ? allAttData : [];
+    console.log('[BAS] Bulk attendance:', attArr.length, 'records');
+    attArr.forEach(r => {
+      // Normalize fields
+      if(!r.opsId && r.opsid) r.opsId = r.opsid;
+      if(!r.opsId && r.ops) r.opsId = r.ops;
+      if(!r.name && r.namaLengkap) r.name = r.namaLengkap;
+      if(!r.name && r.nama) r.name = r.nama;
+      if(!r.station && r.hubDc) r.station = r.hubDc;
+      if(r.opsId) {
+        if(!attMap[r.opsId]) attMap[r.opsId] = [];
+        attMap[r.opsId].push(r);
+      }
     });
-    await Promise.all(proms);
+    
+    // Normalize & group payslips by opsId
+    const payArr = Array.isArray(allPayData) ? allPayData : [];
+    console.log('[BAS] Bulk payslips:', payArr.length, 'records');
+    payArr.forEach(r => {
+      // Normalize fields
+      if(!r.opsId && r.ops) r.opsId = r.ops;
+      if(!r.opsId && r.opsid) r.opsId = r.opsid;
+      if(!r.name && r.nama) r.name = r.nama;
+      // totalYangDibayarkan → totalDibayarkan
+      if(r.totalDibayarkan === undefined && r.totalYangDibayarkan !== undefined) r.totalDibayarkan = r.totalYangDibayarkan;
+      // Ensure numeric
+      if(typeof r.totalDibayarkan === 'string') r.totalDibayarkan = parseFloat(r.totalDibayarkan.replace(/[^\d.-]/g,''))||0;
+      if(!r.totalDibayarkan && r.gaji) r.totalDibayarkan = typeof r.gaji === 'number' ? r.gaji : parseFloat(String(r.gaji).replace(/[^\d.-]/g,''))||0;
+      if(!r.station && r.hubDc) r.station = r.hubDc;
+      if(!r.period && r.periode) r.period = r.periode;
+      if(r.opsId) {
+        if(!payMap[r.opsId]) payMap[r.opsId] = [];
+        payMap[r.opsId].push(r);
+      }
+    });
+    
+    // Fallback: if bulk endpoints not deployed yet, try per-employee (batched)
+    if(attArr.length === 0 && payArr.length === 0) {
+      console.log('[BAS] Bulk endpoints kosong, fallback ke per-employee (batched)...');
+      const batchSize = 10;
+      for(let i = 0; i < employees.length; i += batchSize) {
+        const batch = employees.slice(i, i + batchSize);
+        const proms = batch.map(async e => {
+          const [a, p] = await Promise.all([
+            api('getAttendance', {opsId: e.opsId}),
+            api('getPayslips', {opsId: e.opsId})
+          ]);
+          const normA = (Array.isArray(a)?a:[]).map(r => {
+            if(!r.opsId && r.opsid) r.opsId = r.opsid;
+            if(!r.opsId && r.ops) r.opsId = r.ops;
+            if(!r.name && r.namaLengkap) r.name = r.namaLengkap;
+            if(!r.name && r.nama) r.name = r.nama;
+            return r;
+          });
+          const normP = (Array.isArray(p)?p:[]).map(r => {
+            if(!r.opsId && r.ops) r.opsId = r.ops;
+            if(!r.opsId && r.opsid) r.opsId = r.opsid;
+            if(!r.name && r.nama) r.name = r.nama;
+            if(r.totalDibayarkan === undefined && r.totalYangDibayarkan !== undefined) r.totalDibayarkan = r.totalYangDibayarkan;
+            if(typeof r.totalDibayarkan === 'string') r.totalDibayarkan = parseFloat(r.totalDibayarkan.replace(/[^\d.-]/g,''))||0;
+            if(!r.totalDibayarkan && r.gaji) r.totalDibayarkan = typeof r.gaji === 'number' ? r.gaji : parseFloat(String(r.gaji).replace(/[^\d.-]/g,''))||0;
+            if(!r.station && r.hubDc) r.station = r.hubDc;
+            if(!r.period && r.periode) r.period = r.periode;
+            return r;
+          });
+          attMap[e.opsId] = normA;
+          payMap[e.opsId] = normP;
+        });
+        await Promise.all(proms);
+      }
+    }
   }
   
   // 5. Korlap: filter employees to only those with attendance at this station
