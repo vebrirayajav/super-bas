@@ -8,6 +8,7 @@
       <link rel="icon" href="assets/bas-logo.png" />
       <script src="https://cdn.tailwindcss.com"></script>
       <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+      <link href="https://fonts.cdnfonts.com/css/ethnocentric" rel="stylesheet">
 
       <!-- ===== FETCH INTERCEPTOR: Redirect API ke URL baru ===== -->
       <script>
@@ -1050,12 +1051,57 @@
       .max-w-sm .text-center.mb-8 > .mb-4 {
         margin-bottom: 0.5rem !important;
       }
-      /* SUPER-BAS title: balanced with logo */
+      /* SUPER-BAS title: Ethnocentric font + liquid glow */
+      @keyframes liquid-flow {
+        0%   { background-position: 0% 50%; filter: drop-shadow(0 0 8px rgba(247,37,133,0.4)); }
+        25%  { background-position: 50% 50%; filter: drop-shadow(0 0 14px rgba(114,9,183,0.5)); }
+        50%  { background-position: 100% 50%; filter: drop-shadow(0 0 18px rgba(67,97,238,0.5)); }
+        75%  { background-position: 50% 50%; filter: drop-shadow(0 0 14px rgba(0,245,212,0.4)); }
+        100% { background-position: 0% 50%; filter: drop-shadow(0 0 8px rgba(247,37,133,0.4)); }
+      }
+      @keyframes liquid-shimmer {
+        0%, 100% { opacity: 0.6; transform: translateX(-10%) scaleX(1.2); }
+        50%      { opacity: 1;   transform: translateX(10%) scaleX(0.9); }
+      }
       .max-w-sm .water-wave-text.text-4xl {
-        font-size: 1.5rem !important;
-        letter-spacing: 0.18em !important;
+        font-family: 'Ethnocentric', sans-serif !important;
+        font-size: 1.35rem !important;
+        letter-spacing: 0.14em !important;
         margin-top: 0.5rem !important;
-        font-weight: 800 !important;
+        font-weight: 400 !important;
+        background: linear-gradient(
+          90deg,
+          #f72585, #b5179e, #7209b7, #4361ee, #4cc9f0,
+          #00f5d4, #4cc9f0, #4361ee, #7209b7, #b5179e, #f72585
+        ) !important;
+        background-size: 300% 100% !important;
+        -webkit-background-clip: text !important;
+        -webkit-text-fill-color: transparent !important;
+        background-clip: text !important;
+        animation: liquid-flow 4s ease-in-out infinite !important;
+        position: relative !important;
+        text-shadow: none !important;
+      }
+      .max-w-sm .water-wave-text.text-4xl::after {
+        content: 'SUPER-BAS';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: linear-gradient(
+          90deg,
+          transparent 0%, rgba(255,255,255,0.15) 40%,
+          rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.15) 60%,
+          transparent 100%
+        );
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: liquid-shimmer 3s ease-in-out infinite;
+        pointer-events: none;
+        font-family: 'Ethnocentric', sans-serif;
+        font-size: 1.35rem;
+        letter-spacing: 0.14em;
+        font-weight: 400;
       }
       /* Status badge: neat gap */
       .max-w-sm .mt-3.flex.justify-center {
@@ -1105,12 +1151,17 @@
       html.light-mode .max-w-sm .w-20.h-20 img[alt="Logo"] {
         filter: brightness(0) saturate(100%) invert(22%) sepia(95%) saturate(5000%) hue-rotate(240deg) brightness(0.85) !important;
       }
-      /* SUPER-BAS title */
+      /* SUPER-BAS title — light mode */
       html.light-mode .max-w-sm .water-wave-text {
-        background: linear-gradient(135deg, #6366f1, #7c3aed, #a855f7) !important;
+        background: linear-gradient(
+          90deg,
+          #6366f1, #7c3aed, #a855f7, #ec4899, #a855f7, #7c3aed, #6366f1
+        ) !important;
+        background-size: 300% 100% !important;
         -webkit-background-clip: text !important;
         -webkit-text-fill-color: transparent !important;
         background-clip: text !important;
+        animation: liquid-flow 4s ease-in-out infinite !important;
       }
       /* Server status badges */
       html.light-mode .max-w-sm .text-\[\#00f5d4\] {
