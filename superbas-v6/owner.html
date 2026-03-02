@@ -212,6 +212,7 @@
     <div id="tab-payroll" class="hidden p-4 sm:p-6 lg:p-8 space-y-5"></div>
     <div id="tab-ds" class="hidden p-4 sm:p-6 lg:p-8 space-y-5"></div>
     <div id="tab-idcard" class="hidden p-4 sm:p-6 lg:p-8 space-y-5"></div>
+    <div id="tab-settings" class="hidden p-4 sm:p-6 lg:p-8 space-y-5"></div>
   </div>
 </div>
 
@@ -219,7 +220,8 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG & STATE
 // ═══════════════════════════════════════════════════════════════
-const API = "https://script.google.com/macros/s/AKfycbylz213eFucAEniyxuVtNkYy86xUKXdwVbGD0M9rnNGoTziQyIWCOnyUQx1Nwc-eTCU/exec";
+const DEFAULT_API = "https://script.google.com/macros/s/AKfycbylz213eFucAEniyxuVtNkYy86xUKXdwVbGD0M9rnNGoTziQyIWCOnyUQx1Nwc-eTCU/exec";
+let API = localStorage.getItem('bas_api_url') || DEFAULT_API;
 let employees=[], attMap={}, payMap={}, charts={}, curTab='overview';
 
 // ═══════════════════════════════════════════════════════════════
@@ -240,7 +242,8 @@ const TABS_FULL = [
   { id:'attendance', icon:'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4', label:'Presensi & Station', short:'Presensi' },
   { id:'payroll', icon:'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', label:'Payroll Analytics', short:'Payroll' },
   { id:'ds', icon:'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', label:'Data Science Lab', short:'DS Lab' },
-  { id:'idcard', icon:'M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2', label:'ID Card Generator', short:'ID Card' }
+  { id:'idcard', icon:'M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2', label:'ID Card Generator', short:'ID Card' },
+  { id:'settings', icon:'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z', label:'Pengaturan API', short:'Settings' }
 ];
 // Korlap: no DS Lab, no Payroll full
 const TABS_KORLAP = TABS_FULL.filter(t => !['ds'].includes(t.id));
@@ -687,11 +690,11 @@ function showDbBanner(){
   if(!dbStatus.connected){
     banner.style.background='linear-gradient(135deg,#dc2626,#b91c1c)';
     banner.style.color='#fff';
-    banner.innerHTML='⚠ TIDAK TERHUBUNG KE DATABASE — Periksa koneksi internet atau URL API. <span style="font-weight:400;opacity:0.8">('+( dbStatus.error||'Unknown error')+')</span> <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
+    banner.innerHTML='⚠ TIDAK TERHUBUNG KE DATABASE — Periksa URL API di menu <a onclick="go(\'settings\')" style="text-decoration:underline;cursor:pointer;color:#fff">Pengaturan API</a>. <span style="font-weight:400;opacity:0.8">('+( dbStatus.error||'Unknown error')+')</span> <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
   } else if(dbStatus.emptySheetsWarning){
     banner.style.background='linear-gradient(135deg,#f59e0b,#d97706)';
     banner.style.color='#fff';
-    banner.innerHTML='⚠ DATABASE TERHUBUNG tapi BELUM ADA DATA KARYAWAN — Silakan tambahkan data karyawan di Google Sheet atau via menu Karyawan. <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
+    banner.innerHTML='⚠ DATABASE TERHUBUNG tapi BELUM ADA DATA — Buka <a onclick="go(\'settings\')" style="text-decoration:underline;cursor:pointer;color:#fff">Pengaturan API</a> lalu klik "Diagnosa Koneksi" untuk cek sheet. <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
   } else {
     banner.style.background='linear-gradient(135deg,#10b981,#059669)';
     banner.style.color='#fff';
@@ -716,7 +719,16 @@ async function loadAll(){
   // Detect if API returned error
   if(ed===null){
     dbStatus.connected=false;
-    dbStatus.error='getAllEmployees gagal — periksa Apps Script';
+    dbStatus.error='getAllEmployees gagal — periksa Apps Script. Kemungkinan URL deployment salah atau belum di-deploy ulang.';
+    showDbBanner();
+    return;
+  }
+  
+  // Detect if API returned an error object  
+  if(ed && ed.error){
+    dbStatus.connected=true;
+    dbStatus.error='API Error: '+ed.error;
+    dbStatus.emptySheetsWarning=true;
     showDbBanner();
     return;
   }
@@ -729,12 +741,14 @@ async function loadAll(){
   }
   
   // 3. Load attendance & payslips per employee
-  const proms=employees.map(async e=>{
-    const[a,p]=await Promise.all([api('getAttendance',{opsId:e.opsId}),api('getPayslips',{opsId:e.opsId})]);
-    attMap[e.opsId]=Array.isArray(a)?a:[];
-    payMap[e.opsId]=Array.isArray(p)?p:[];
-  });
-  await Promise.all(proms);
+  if(employees.length > 0) {
+    const proms=employees.map(async e=>{
+      const[a,p]=await Promise.all([api('getAttendance',{opsId:e.opsId}),api('getPayslips',{opsId:e.opsId})]);
+      attMap[e.opsId]=Array.isArray(a)?a:[];
+      payMap[e.opsId]=Array.isArray(p)?p:[];
+    });
+    await Promise.all(proms);
+  }
   
   // Korlap: after loading attendance, filter employees to only those with attendance at this station
   if (isKorlap && korlapStation) {
@@ -773,7 +787,7 @@ function go(tab){
   document.querySelectorAll('#mobileNav .mob-tab').forEach(b=>{b.classList.remove('text-accent-pink');b.classList.add('text-slate-500');const dot=b.querySelector('.mob-dot');if(dot)dot.style.opacity='0';});
   const mb=document.querySelector(`#mobileNav [data-t="${tab}"]`);
   if(mb){mb.classList.remove('text-slate-500');mb.classList.add('text-accent-pink');const dot=mb.querySelector('.mob-dot');if(dot)dot.style.opacity='1';}
-  const R={overview:rOverview,employees:rEmployees,attendance:rAttendance,payroll:rPayroll,ds:rDS,idcard:rIDCard};
+  const R={overview:rOverview,employees:rEmployees,attendance:rAttendance,payroll:rPayroll,ds:rDS,idcard:rIDCard,settings:rSettings};
   R[tab]?.();
 }
 function logout(){sessionStorage.removeItem('bas_owner_auth');sessionStorage.removeItem('bas_owner_profile');window.location.href='index.html';}
@@ -2592,6 +2606,236 @@ function printAllCards() {
   </head><body><div class="id-card-grid">${printArea.innerHTML}</div></body></html>`);
   w.document.close();
   setTimeout(() => { w.print(); }, 500);
+}
+
+  setTimeout(() => { w.print(); }, 500);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SETTINGS & DIAGNOSTIK API
+// ═══════════════════════════════════════════════════════════════
+function rSettings(){
+  const el=document.getElementById('tab-settings');
+  el.innerHTML=`
+  <div class="fade-up">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div>
+        <h1 class="text-xl sm:text-2xl font-black text-white">Pengaturan & Diagnostik API</h1>
+        <p class="text-xs text-slate-400 mt-1">Konfigurasi koneksi ke Google Sheets API</p>
+      </div>
+    </div>
+
+    <!-- API URL CONFIG -->
+    <div class="glass rounded-2xl p-5 mb-5">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="w-2 h-2 rounded-full bg-accent-cyan"></span>
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">URL API (Google Apps Script Web App)</h3>
+      </div>
+      <div class="space-y-3">
+        <input type="text" id="apiUrlInput" value="${API}" 
+          class="search-input w-full text-xs" style="padding-left:14px"
+          placeholder="https://script.google.com/macros/s/XXXXXXX/exec" />
+        <div class="flex flex-wrap gap-2">
+          <button onclick="saveApiUrl()" class="px-4 py-2 rounded-xl bg-accent-cyan/20 text-accent-cyan text-xs font-bold border border-accent-cyan/30 hover:bg-accent-cyan/30 transition-all">
+            💾 Simpan & Muat Ulang
+          </button>
+          <button onclick="resetApiUrl()" class="px-4 py-2 rounded-xl bg-white/5 text-slate-400 text-xs font-bold border border-white/10 hover:bg-white/10 transition-all">
+            🔄 Reset ke Default
+          </button>
+          <button onclick="runDiagnose()" class="px-4 py-2 rounded-xl bg-accent-green/20 text-accent-green text-xs font-bold border border-accent-green/30 hover:bg-accent-green/30 transition-all">
+            🔍 Diagnosa Koneksi
+          </button>
+        </div>
+        <p class="text-[10px] text-slate-500">URL saat ini: <code class="text-accent-cyan/70">${API}</code></p>
+        <p class="text-[10px] text-slate-500">Status: <span id="apiStatusBadge" class="${dbStatus.connected ? 'text-accent-green' : 'text-accent-red'}">${dbStatus.connected ? '● Terhubung' : '● Tidak terhubung'}</span></p>
+      </div>
+    </div>
+
+    <!-- PETUNJUK DEPLOY -->
+    <div class="glass rounded-2xl p-5 mb-5">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="w-2 h-2 rounded-full bg-accent-orange"></span>
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Petunjuk Deploy Apps Script</h3>
+      </div>
+      <div class="text-xs text-slate-400 space-y-2">
+        <p><strong class="text-white">1.</strong> Buka Google Sheets yang berisi data Karyawan, Attendance, Payslips</p>
+        <p><strong class="text-white">2.</strong> Klik <strong class="text-accent-cyan">Extensions → Apps Script</strong></p>
+        <p><strong class="text-white">3.</strong> Hapus semua kode lama di Code.gs</p>
+        <p><strong class="text-white">4.</strong> Copy-paste isi file <strong class="text-accent-pink">APPS_SCRIPT_COMPLETE.gs</strong> ke Code.gs</p>
+        <p><strong class="text-white">5.</strong> Save (Ctrl+S)</p>
+        <p><strong class="text-white">6.</strong> Klik <strong class="text-accent-cyan">Deploy → New deployment</strong></p>
+        <p class="pl-5">• Pilih type: <strong class="text-white">Web app</strong></p>
+        <p class="pl-5">• Execute as: <strong class="text-white">Me</strong></p>
+        <p class="pl-5">• Who has access: <strong class="text-white">Anyone</strong></p>
+        <p><strong class="text-white">7.</strong> Copy URL deployment, paste ke kolom di atas, lalu klik <strong class="text-accent-cyan">Simpan & Muat Ulang</strong></p>
+        <div class="mt-3 p-3 rounded-xl bg-accent-orange/10 border border-accent-orange/20">
+          <p class="text-accent-orange font-bold">⚠ PENTING:</p>
+          <p class="mt-1">Setiap kali mengubah kode Apps Script, Anda harus membuat <strong class="text-white">New deployment</strong> dan menggunakan URL baru.</p>
+          <p class="mt-1">Sheet yang dibutuhkan: <strong class="text-white">Employees, Attendance, Payslips, DataOwner, SystemMessage</strong></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIAGNOSE RESULT -->
+    <div class="glass rounded-2xl p-5 mb-5" id="diagnosePanel">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="w-2 h-2 rounded-full bg-accent-pink"></span>
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Hasil Diagnostik</h3>
+      </div>
+      <div id="diagnoseResult" class="text-xs text-slate-400">
+        <p>Klik tombol "🔍 Diagnosa Koneksi" untuk mengecek status koneksi dan data sheet.</p>
+      </div>
+    </div>
+
+    <!-- CONNECTION LOG -->
+    <div class="glass rounded-2xl p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="w-2 h-2 rounded-full bg-accent-blue"></span>
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Info Koneksi Saat Ini</h3>
+      </div>
+      <div class="text-xs text-slate-400 space-y-1">
+        <p>Database connected: <span class="${dbStatus.connected?'text-accent-green':'text-accent-red'}">${dbStatus.connected}</span></p>
+        <p>Error: <span class="text-accent-red">${dbStatus.error||'tidak ada'}</span></p>
+        <p>Total karyawan dimuat: <span class="text-white font-bold">${employees.length}</span></p>
+        <p>Total attendance records: <span class="text-white font-bold">${Object.values(attMap).flat().length}</span></p>
+        <p>Total payslip records: <span class="text-white font-bold">${Object.values(payMap).flat().length}</span></p>
+      </div>
+    </div>
+  </div>`;
+}
+
+function saveApiUrl(){
+  const val = document.getElementById('apiUrlInput')?.value?.trim();
+  if(!val || !val.startsWith('https://script.google.com/macros/s/')){
+    alert('URL tidak valid. Harus dimulai dengan: https://script.google.com/macros/s/...');
+    return;
+  }
+  localStorage.setItem('bas_api_url', val);
+  API = val;
+  alert('URL API disimpan! Halaman akan dimuat ulang.');
+  window.location.reload();
+}
+
+function resetApiUrl(){
+  localStorage.removeItem('bas_api_url');
+  API = DEFAULT_API;
+  alert('URL dikembalikan ke default. Halaman akan dimuat ulang.');
+  window.location.reload();
+}
+
+async function runDiagnose(){
+  const dr = document.getElementById('diagnoseResult');
+  dr.innerHTML = '<p class="text-accent-cyan animate-pulse">⏳ Menjalankan diagnostik...</p>';
+  
+  try {
+    // 1. Health Check
+    let healthOk = false;
+    try {
+      const hc = await fetch(API, {method:'GET', headers:{'Accept':'application/json'}});
+      if(hc.ok) {
+        const hj = await hc.json();
+        healthOk = hj && hj.status === 'ONLINE';
+      }
+    } catch(e) {}
+
+    if(!healthOk) {
+      dr.innerHTML = `
+        <div class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 space-y-2">
+          <p class="text-red-400 font-bold">❌ API TIDAK TERHUBUNG</p>
+          <p>URL API tidak merespons atau tidak valid.</p>
+          <p class="text-white">URL: <code class="text-accent-cyan/70 break-all">${API}</code></p>
+          <p class="mt-2 font-bold text-accent-orange">Solusi:</p>
+          <p>1. Pastikan sudah deploy Apps Script sebagai Web App</p>
+          <p>2. Pastikan "Who has access" diset ke "Anyone"</p>
+          <p>3. Paste URL deployment yang benar di kolom di atas</p>
+        </div>`;
+      return;
+    }
+    
+    // 2. Diagnose sheets
+    const diagResp = await api('diagnose');
+    
+    if(!diagResp || diagResp.error){
+      dr.innerHTML = `
+        <div class="p-3 rounded-xl bg-accent-orange/10 border border-accent-orange/30 space-y-2">
+          <p class="text-accent-orange font-bold">⚠ API Online tapi DIAGNOSE gagal</p>
+          <p class="text-slate-400">Error: ${diagResp?.error || 'Tidak ada respons'}</p>
+          <p class="text-slate-400 mt-2">Kemungkinan Apps Script belum ter-deploy ulang setelah ditambahkan action 'diagnose'.</p>
+          <p class="text-white font-bold">Solusi: Copy ulang APPS_SCRIPT_COMPLETE.gs ke Apps Script, lalu buat New Deployment.</p>
+        </div>`;
+      return;
+    }
+    
+    // 3. Show results
+    const required = ['Employees', 'Attendance', 'Payslips', 'DataOwner', 'SystemMessage'];
+    const missing = diagResp.missingSheets || [];
+    const sheetsHtml = (diagResp.sheets||[]).map(s => {
+      const isRequired = required.includes(s.name);
+      const statusColor = s.rows > 0 ? 'text-accent-green' : 'text-accent-orange';
+      const statusIcon = s.rows > 0 ? '✅' : '⚠️';
+      return `<tr class="trow border-b border-white/5">
+        <td class="py-2 px-3 ${isRequired?'text-white font-bold':'text-slate-400'}">${s.name} ${isRequired?'<span class="chip chip-cyan text-[8px]">required</span>':''}</td>
+        <td class="py-2 px-3 ${statusColor} font-bold">${statusIcon} ${s.rows} baris data</td>
+        <td class="py-2 px-3 text-slate-500">${s.columns} kolom</td>
+        <td class="py-2 px-3 text-slate-500 text-[10px]">${(s.headers||[]).slice(0,5).join(', ')}${s.headers?.length>5?'...':''}</td>
+      </tr>`;
+    }).join('');
+    
+    const missingHtml = missing.length > 0 
+      ? `<div class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 mt-3">
+          <p class="text-red-400 font-bold">❌ Sheet yang hilang: ${missing.join(', ')}</p>
+          <p class="text-slate-400 mt-1">Klik tombol di bawah untuk membuat sheet yang hilang secara otomatis.</p>
+          <button onclick="runSetup()" class="mt-2 px-4 py-2 rounded-xl bg-accent-pink/20 text-accent-pink text-xs font-bold border border-accent-pink/30 hover:bg-accent-pink/30 transition-all">
+            🛠 Setup - Buat Sheet yang Hilang
+          </button>
+        </div>` 
+      : '<p class="text-accent-green mt-3">✅ Semua sheet yang dibutuhkan sudah ada!</p>';
+    
+    const emptySheets = (diagResp.sheets||[]).filter(s => required.includes(s.name) && s.rows === 0);
+    const emptyWarning = emptySheets.length > 0
+      ? `<div class="p-3 rounded-xl bg-accent-orange/10 border border-accent-orange/30 mt-3">
+          <p class="text-accent-orange font-bold">⚠ Sheet kosong (belum ada data):</p>
+          <p class="text-slate-400 mt-1">${emptySheets.map(s=>s.name).join(', ')}</p>
+          <p class="text-slate-400 mt-1">Pastikan data sudah diisi di Google Sheets, atau tambahkan data via menu Karyawan.</p>
+        </div>` : '';
+    
+    dr.innerHTML = `
+      <div class="space-y-3">
+        <div class="p-3 rounded-xl bg-accent-green/10 border border-accent-green/30">
+          <p class="text-accent-green font-bold">✅ API TERHUBUNG</p>
+          <p class="text-slate-400 mt-1">Spreadsheet: <strong class="text-white">${diagResp.spreadsheetName||'?'}</strong></p>
+          <p class="text-slate-400">ID: <code class="text-slate-500">${diagResp.spreadsheetId||'?'}</code></p>
+          <p class="text-slate-400">URL: <a href="${diagResp.spreadsheetUrl||'#'}" target="_blank" class="text-accent-cyan hover:underline">${diagResp.spreadsheetUrl?'Buka Spreadsheet ↗':'-'}</a></p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead><tr class="border-b border-white/10 text-slate-500">
+              <th class="text-left py-2 px-3">Sheet</th>
+              <th class="text-left py-2 px-3">Data</th>
+              <th class="text-left py-2 px-3">Kolom</th>
+              <th class="text-left py-2 px-3">Headers (5 pertama)</th>
+            </tr></thead>
+            <tbody>${sheetsHtml}</tbody>
+          </table>
+        </div>
+        ${missingHtml}
+        ${emptyWarning}
+      </div>`;
+  } catch(e) {
+    dr.innerHTML = `<div class="p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+      <p class="text-red-400 font-bold">❌ Error: ${e.message}</p>
+    </div>`;
+  }
+}
+
+async function runSetup(){
+  const r = await api('setup');
+  if(r && r.status === 'Success'){
+    alert('Setup berhasil: ' + r.message);
+    runDiagnose();
+  } else {
+    alert('Setup gagal: ' + (r?.error || 'Unknown'));
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -57,6 +57,7 @@ function doPost(e) {
       case 'addPayslip':         return jsonResponse(handleAddPayslip(data));
       case 'updatePayslipStatus':return jsonResponse(handleUpdatePayslipStatus(data));
       case 'setup':              return jsonResponse(handleSetup());
+      case 'diagnose':           return jsonResponse(handleDiagnose());
       default:                   return jsonResponse({ error: 'Unknown action: ' + action });
     }
   } catch (err) {
@@ -174,6 +175,45 @@ function buildRow(headers, data) {
 //  ACTION: setup — Hanya membuat sheet yang BELUM ADA
 //  ⚠ TIDAK mengubah sheet yang sudah ada!
 // ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+//  ACTION: diagnose — Laporan status sheet & koneksi
+// ═══════════════════════════════════════════════════════════════
+
+function handleDiagnose() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheets = ss.getSheets();
+    var report = {
+      status: 'OK',
+      spreadsheetName: ss.getName(),
+      spreadsheetId: ss.getId(),
+      spreadsheetUrl: ss.getUrl(),
+      timestamp: new Date().toISOString(),
+      sheets: []
+    };
+    var requiredSheets = ['Employees', 'Attendance', 'Payslips', 'DataOwner', 'SystemMessage'];
+    var foundSheets = {};
+    for (var i = 0; i < sheets.length; i++) {
+      var s = sheets[i];
+      var name = s.getName();
+      var lastRow = s.getLastRow();
+      var lastCol = s.getLastColumn();
+      var headers = lastCol > 0 ? s.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h){return String(h).trim();}) : [];
+      report.sheets.push({
+        name: name,
+        rows: Math.max(0, lastRow - 1),
+        columns: lastCol,
+        headers: headers
+      });
+      foundSheets[name] = true;
+    }
+    report.missingSheets = requiredSheets.filter(function(n){ return !foundSheets[n]; });
+    return report;
+  } catch(err) {
+    return { status: 'ERROR', error: err.toString() };
+  }
+}
 
 function handleSetup() {
   try {
