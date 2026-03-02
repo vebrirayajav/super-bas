@@ -464,7 +464,7 @@ function applyTheme(theme) {
   const lbl = document.getElementById('themeLabel');
   if (lbl) lbl.textContent = theme === 'light' ? 'Mode Terang' : 'Mode Gelap';
   // Re-render active chart colors if any charts are showing
-  if (typeof updateChartsTheme === 'function') updateChartsTheme(theme);
+  if (typeof updateChartsTheme === 'function') updateChartsTheme();
 }
 function toggleTheme() {
   const cur = getTheme();
@@ -983,7 +983,7 @@ function showDbBanner(){
   if(!dbStatus.connected){
     banner.style.background='linear-gradient(135deg,#dc2626,#b91c1c)';
     banner.style.color='#fff';
-    banner.innerHTML='⚠ TIDAK TERHUBUNG KE DATABASE — <a onclick="go(\'settings\')" style="text-decoration:underline;cursor:pointer;color:#fff;font-weight:900">Buka Pengaturan API →</a> <span style="font-weight:400;opacity:0.8">('+( dbStatus.error||'Unknown error')+')</span> <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
+    banner.innerHTML='⚠ TIDAK TERHUBUNG KE DATABASE — <a onclick="reloadData()" style="text-decoration:underline;cursor:pointer;color:#fff;font-weight:900">Coba Lagi ↻</a> <span style="font-weight:400;opacity:0.8">('+(dbStatus.error||'Unknown error')+')</span> <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
   } else if(dbStatus.emptySheetsWarning){
     banner.style.background='linear-gradient(135deg,#f59e0b,#d97706)';
     banner.style.color='#fff';
@@ -2843,9 +2843,11 @@ function generateSingleCard() {
   const rawId = document.getElementById('icOpsId').value.trim();
   if (!name || !rawId) { alert('Nama dan OPS ID wajib diisi!'); return; }
   const opsId = formatOpsId(rawId);
+  // Cari posisi dari data employee jika ada
+  const emp = employees.find(e => e.opsId === opsId || formatOpsId(e.opsId||'') === opsId);
   const data = [{
     name, opsId,
-    position: 'Daily Worker'
+    position: emp?.position || 'Daily Worker'
   }];
   idcardPreviewData = data;
   renderCardPreview(data);
@@ -2932,7 +2934,7 @@ function parseBulkData() {
     data.push({
       name,
       opsId,
-      position: 'Daily Worker'
+      position: (function(){ var m=employees.find(function(e){return formatOpsId(e.opsId||'')===opsId;}); return m&&m.position?m.position:'Daily Worker'; })()
     });
   }
 
@@ -2950,7 +2952,7 @@ function loadAllEmployeesToBulk() {
   const data = employees.map(e => ({
     name: e.name || '',
     opsId: formatOpsId(e.opsId || ''),
-    position: 'Daily Worker'
+    position: e.position || 'Daily Worker'
   }));
   bulkSortBy = 'name';
   const sorted = sortCardData(data, bulkSortBy);
@@ -3629,16 +3631,21 @@ async function init(){
 function applyRoleUI() {
   const roleName = ownerProfile.nama || (isKorlap ? 'Korlap' : 'Owner');
   const roleLabel = isKorlap ? 'KORLAP' : 'OWNER';
-  const roleColor = isKorlap ? 'accent-orange' : 'accent-pink';
-  
   // Sidebar — only show role badge (logo is static)
   const rb = document.getElementById('sidebarRoleBadge');
   if (rb) {
     rb.classList.remove('hidden');
-    rb.innerHTML = `<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-${roleColor}/10 border border-${roleColor}/20">`
-      + `<span class="w-1.5 h-1.5 rounded-full bg-${roleColor} animate-pulse"></span>`
-      + `<span class="text-[9px] font-bold text-${roleColor} uppercase tracking-wider">${roleLabel}${isKorlap ? ' — ' + korlapStation : ''}</span>`
-      + `</div>`;
+    if (isKorlap) {
+      rb.innerHTML = `<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent-orange/10 border border-accent-orange/20">`
+        + `<span class="w-1.5 h-1.5 rounded-full bg-accent-orange animate-pulse"></span>`
+        + `<span class="text-[9px] font-bold text-accent-orange uppercase tracking-wider">KORLAP — ${korlapStation}</span>`
+        + `</div>`;
+    } else {
+      rb.innerHTML = `<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent-pink/10 border border-accent-pink/20">`
+        + `<span class="w-1.5 h-1.5 rounded-full bg-accent-pink animate-pulse"></span>`
+        + `<span class="text-[9px] font-bold text-accent-pink uppercase tracking-wider">OWNER</span>`
+        + `</div>`;
+    }
   }
   
   // Mobile header — show BAS branding, not user name
