@@ -212,7 +212,6 @@
     <div id="tab-payroll" class="hidden p-4 sm:p-6 lg:p-8 space-y-5"></div>
     <div id="tab-ds" class="hidden p-4 sm:p-6 lg:p-8 space-y-5"></div>
     <div id="tab-idcard" class="hidden p-4 sm:p-6 lg:p-8 space-y-5"></div>
-    <div id="tab-settings" class="hidden p-4 sm:p-6 lg:p-8 space-y-5"></div>
   </div>
 </div>
 
@@ -242,8 +241,7 @@ const TABS_FULL = [
   { id:'attendance', icon:'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4', label:'Presensi & Station', short:'Presensi' },
   { id:'payroll', icon:'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', label:'Payroll Analytics', short:'Payroll' },
   { id:'ds', icon:'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', label:'Data Science Lab', short:'DS Lab' },
-  { id:'idcard', icon:'M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2', label:'ID Card Generator', short:'ID Card' },
-  { id:'settings', icon:'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z', label:'Pengaturan API', short:'Settings' }
+  { id:'idcard', icon:'M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2', label:'ID Card Generator', short:'ID Card' }
 ];
 // Korlap: no DS Lab, no Payroll full
 const TABS_KORLAP = TABS_FULL.filter(t => !['ds'].includes(t.id));
@@ -714,7 +712,7 @@ function showDbBanner(){
   } else if(dbStatus.emptySheetsWarning){
     banner.style.background='linear-gradient(135deg,#f59e0b,#d97706)';
     banner.style.color='#fff';
-    banner.innerHTML='⚠ API TERHUBUNG TAPI DATA KOSONG — Deep Learning akan otomatis mengolah data begitu sheet terisi. <a onclick="go(\'settings\')" style="text-decoration:underline;cursor:pointer;color:#fff;font-weight:900">Buka Diagnostik →</a> <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
+    banner.innerHTML='⚠ API TERHUBUNG TAPI DATA KOSONG — Deep Learning akan otomatis mengolah data begitu sheet terisi. <a onclick="reloadData()" style="text-decoration:underline;cursor:pointer;color:#fff;font-weight:900">Refresh ↻</a> <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
   } else if(window._autoDiscoveryInfo){
     banner.style.background='linear-gradient(135deg,#6366f1,#8b5cf6)';
     banner.style.color='#fff';
@@ -1048,7 +1046,7 @@ function go(tab){
   document.querySelectorAll('#mobileNav .mob-tab').forEach(b=>{b.classList.remove('text-accent-pink');b.classList.add('text-slate-500');const dot=b.querySelector('.mob-dot');if(dot)dot.style.opacity='0';});
   const mb=document.querySelector(`#mobileNav [data-t="${tab}"]`);
   if(mb){mb.classList.remove('text-slate-500');mb.classList.add('text-accent-pink');const dot=mb.querySelector('.mob-dot');if(dot)dot.style.opacity='1';}
-  const R={overview:rOverview,employees:rEmployees,attendance:rAttendance,payroll:rPayroll,ds:rDS,idcard:rIDCard,settings:rSettings};
+  const R={overview:rOverview,employees:rEmployees,attendance:rAttendance,payroll:rPayroll,ds:rDS,idcard:rIDCard};
   R[tab]?.();
 }
 function logout(){
@@ -1147,7 +1145,6 @@ function rOverview(){
         </div>
         <div class="flex gap-3 mt-2">
           <button onclick="reloadData()" class="px-5 py-2 bg-accent-pink rounded-xl text-white text-sm font-bold hover:bg-accent-pink/80 transition">↻ Refresh Data</button>
-          <button onclick="go('settings')" class="px-5 py-2 bg-accent-blue/20 border border-accent-blue/30 rounded-xl text-accent-blue text-sm font-bold hover:bg-accent-blue/30 transition">⚙ Buka Pengaturan</button>
         </div>
         <div class="mt-4 glass rounded-xl p-3 text-[10px] text-slate-500">
           <span class="text-accent-green">✓</span> API: <b class="text-white">ONLINE</b> |
@@ -3297,7 +3294,6 @@ async function runAutoLoad(){
       <p class="text-slate-500 mt-1 text-[10px]">Coba klik "Scan Semua Sheet" untuk melihat sheet apa saja yang ada di spreadsheet.</p>
     </div>`;
   }
-  rSettings(); // refresh settings panel
 }
 
 async function reloadData(){
@@ -3307,7 +3303,6 @@ async function reloadData(){
   dbStatus = { connected: false, error: null, emptySheetsWarning: false };
   await loadAll();
   if(loaderEl) loaderEl.classList.add('hidden');
-  rSettings();
   if(employees.length > 0) {
     go('overview');
   }
@@ -3337,14 +3332,8 @@ async function init(){
   if(loaderMsg && dbStatus.connected) loaderMsg.textContent='Merender Dashboard & DL Engine...';
   loaderEl?.classList.add('hidden');
   
-  // Auto-navigate to settings if data is empty or not connected
-  if(!dbStatus.connected || dbStatus.emptySheetsWarning){
-    go('settings');
-    // Auto-run diagnose after a short delay
-    setTimeout(()=>{ if(typeof runDiagnose==='function') runDiagnose(); }, 500);
-  } else {
-    go('overview');
-  }
+  // Always start on overview
+  go('overview');
 }
 
 function applyRoleUI() {
