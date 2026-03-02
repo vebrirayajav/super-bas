@@ -228,7 +228,7 @@ let employees=[], attMap={}, payMap={}, charts={}, curTab='overview';
 let ownerProfile = { ops:'', nama:'', station:'ALL', status:'OWNER', wa:'' };
 try {
   const _p = JSON.parse(sessionStorage.getItem('bas_owner_profile') || '{}');
-  if (_p.ops) ownerProfile = _p;
+  if (_p && (_p.ops !== undefined || _p.nama || _p.status)) ownerProfile = _p;
 } catch(e) {}
 const isKorlap = ownerProfile.status === 'KORLAP';
 const korlapStation = isKorlap ? (ownerProfile.station || '') : '';
