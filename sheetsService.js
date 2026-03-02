@@ -2,7 +2,7 @@ const { google } = require('googleapis');
 require('dotenv').config();
 
 // Configuration constants
-const MAX_ROWS = process.env.MAX_ROWS || 1000;
+const MAX_ROWS = parseInt(process.env.MAX_ROWS, 10) || 1000;
 
 /**
  * Google Sheets Service
