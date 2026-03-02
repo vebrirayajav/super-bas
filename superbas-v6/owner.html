@@ -160,16 +160,12 @@
   <!-- SIDEBAR -->
   <aside class="sidebar fixed top-0 left-0 h-full w-[260px] glass flex-col z-50 border-r border-white/5">
     <div class="p-5 border-b border-white/5">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
-          <img src="assets/bas-logo.png" alt="BAS Logo" class="w-full h-full object-contain">
-        </div>
-        <div>
-          <h2 class="font-extrabold text-sm text-white leading-tight tracking-tight" id="sidebarTitle">BAS Owner</h2>
-          <p class="text-[9px] text-accent-cyan font-bold uppercase tracking-[0.15em]" id="sidebarSub">ML & Data Science</p>
+      <div class="flex flex-col items-center gap-2">
+        <div class="w-28 h-auto flex items-center justify-center">
+          <img src="assets/bas-logo.png" alt="BAS Logo" class="w-full h-auto object-contain">
         </div>
       </div>
-      <div id="sidebarRoleBadge" class="mt-3 hidden"></div>
+      <div id="sidebarRoleBadge" class="mt-3 flex justify-center hidden"></div>
     </div>
     <nav class="flex-1 p-3 space-y-1 overflow-y-auto" id="sideNav"></nav>
     <div class="p-3 border-t border-white/5">
@@ -3341,12 +3337,8 @@ function applyRoleUI() {
   const roleLabel = isKorlap ? 'KORLAP' : 'OWNER';
   const roleColor = isKorlap ? 'accent-orange' : 'accent-pink';
   
-  // Sidebar
-  const st = document.getElementById('sidebarTitle');
-  const ss = document.getElementById('sidebarSub');
+  // Sidebar — only show role badge (logo is static)
   const rb = document.getElementById('sidebarRoleBadge');
-  if (st) st.textContent = roleName;
-  if (ss) ss.textContent = isKorlap ? korlapStation : 'Full Access';
   if (rb) {
     rb.classList.remove('hidden');
     rb.innerHTML = `<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-${roleColor}/10 border border-${roleColor}/20">`
@@ -3355,11 +3347,11 @@ function applyRoleUI() {
       + `</div>`;
   }
   
-  // Mobile header
+  // Mobile header — show BAS branding, not user name
   const mt = document.getElementById('mobileTitle');
   const ms = document.getElementById('mobileSub');
-  if (mt) mt.textContent = roleName;
-  if (ms) ms.textContent = isKorlap ? 'Korlap — ' + korlapStation : 'Owner — Full Access';
+  if (mt) mt.textContent = 'BAS';
+  if (ms) ms.textContent = isKorlap ? 'Korlap — ' + korlapStation : roleLabel;
 }
 
 init();
