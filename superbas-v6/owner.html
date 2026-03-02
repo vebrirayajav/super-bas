@@ -1383,7 +1383,7 @@ function rEmployees(){
                 <td class="px-4 py-3 text-accent-cyan font-mono font-semibold text-[11px]">${e.opsId||'-'}</td>
                 <td class="px-4 py-3 text-slate-400 hidden sm:table-cell">${e.position||'-'}</td>
                 <td class="px-4 py-3 hidden md:table-cell"><span class="chip ${(e.status||'').toLowerCase().includes('active')?'chip-green':'chip-orange'}">${e.status||'-'}</span></td>
-                <td class="px-4 py-3 text-slate-400 hidden lg:table-cell text-[10px]">${e.bank||'-'}</td>
+                <td class="px-4 py-3 text-slate-400 hidden lg:table-cell text-[10px]">${e.bankName||e.bank||'-'}</td>
                 <td class="px-4 py-3 hidden lg:table-cell"><span class="chip chip-cyan text-[9px]">${mainSt?mainSt[0]:'-'}</span></td>
                 <td class="px-4 py-3 text-right font-bold text-white">${att.length}</td>
               </tr>`;
@@ -1406,8 +1406,8 @@ function rEmployees(){
       const res=ML.kMeans(counts,k);
       const silScore=DL.silhouetteScore(counts,res.assignments,res.centroids);
       const colors=[C.pk,C.bl,C.gn];
-      const labels=['Low ('+res.clusters[0]?.length+')','Medium ('+res.clusters[1]?.length+')','High ('+res.clusters[2]?.length+')'];
-      const ds=res.clusters.map((cl,i)=>({label:labels[i]||'C'+i,data:cl.map(it=>({x:it.idx,y:Array.isArray(it.data)?it.data[0]:it.data})),backgroundColor:colors[i],pointRadius:5,pointHoverRadius:7}));
+      const labels=res.clusters.map((cl,i)=>{ const names=['Low','Medium','High']; return (names[i]||'C'+(i+1))+' ('+(cl?.length||0)+')'; });
+      const ds=res.clusters.map((cl,i)=>({label:labels[i]||'C'+(i+1),data:(cl||[]).map(it=>({x:it.idx,y:Array.isArray(it.data)?it.data[0]:it.data})),backgroundColor:colors[i%colors.length],pointRadius:5,pointHoverRadius:7}));
       mkChart('cCluster',{type:'scatter',data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,padding:10,font:{size:9,weight:'600'}}},title:{display:true,text:'Silhouette Score: '+silScore.toFixed(3)+' | WCSS: '+res.wcss.toFixed(1),font:{size:9},color:'rgba(148,163,184,0.6)'}},scales:{x:{title:{display:true,text:'Index Karyawan',font:{size:9}},ticks:{font:{size:8}}},y:{title:{display:true,text:'Jumlah Presensi',font:{size:9}},beginAtZero:true,ticks:{font:{size:8}}}}}});
     }
   },80);
@@ -1448,7 +1448,7 @@ function attFilteredRecords(){
   if(attDateFrom){ recs=recs.filter(a=>(a.date||'')>=attDateFrom); }
   if(attDateTo){ recs=recs.filter(a=>(a.date||'').substring(0,10)<=attDateTo); }
   if(attSelStation){ recs=recs.filter(a=>(a.station||'')=== attSelStation); }
-  if(attSelEmp){ recs=recs.filter(a=>{ const emAtts=attMap[attSelEmp]||[]; return emAtts.includes(a); }); }
+  if(attSelEmp){ const empSet=new Set(attMap[attSelEmp]||[]); recs=recs.filter(a=>empSet.has(a)); }
   return recs;
 }
 function attBuildCalendar(year,month){
@@ -2907,7 +2907,7 @@ function rSettings(){
           </button>
         </div>
         <p class="text-[10px] text-slate-500">URL saat ini: <code class="text-accent-cyan/70">${API}</code></p>
-        <p class="text-[10px] text-slate-500">Status: <span id="apiStatusBadge" class="${dbStatus.connected ? 'text-accent-green' : 'text-accent-red'}">${dbStatus.connected ? '● Terhubung' : '● Tidak terhubung'}</span></p>
+        <p class="text-[10px] text-slate-500">Status: <span id="apiStatusBadge" class="${dbStatus.connected ? 'text-accent-green' : 'text-red-400'}">${dbStatus.connected ? '● Terhubung' : '● Tidak terhubung'}</span></p>
       </div>
     </div>
 
@@ -2985,8 +2985,8 @@ function rSettings(){
         <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Info Koneksi Saat Ini</h3>
       </div>
       <div class="text-xs text-slate-400 space-y-1">
-        <p>Database connected: <span class="${dbStatus.connected?'text-accent-green':'text-accent-red'}">${dbStatus.connected}</span></p>
-        <p>Error: <span class="text-accent-red">${dbStatus.error||'tidak ada'}</span></p>
+        <p>Database connected: <span class="${dbStatus.connected?'text-accent-green':'text-red-400'}">${dbStatus.connected}</span></p>
+        <p>Error: <span class="text-red-400">${dbStatus.error||'tidak ada'}</span></p>
         <p>Total karyawan dimuat: <span class="text-white font-bold">${employees.length}</span></p>
         <p>Total attendance records: <span class="text-white font-bold">${Object.values(attMap).flat().length}</span></p>
         <p>Total payslip records: <span class="text-white font-bold">${Object.values(payMap).flat().length}</span></p>
@@ -3098,7 +3098,7 @@ async function runDiagnose(){
     // Diagnose sheet table (if available)
     let sheetsTable = '';
     if(results.diagnose && results.diagnose.sheets) {
-      const required = ['Employees', 'Attendance', 'Payslips', 'DataOwner', 'SystemMessage'];
+      const required = ['DataKaryawan', 'Absensi', 'SlipGaji', 'DataOwner', 'SystemMessage'];
       sheetsTable = `
         <div class="mt-4 p-3 rounded-xl bg-white/3 border border-white/5">
           <p class="font-bold text-white mb-2">📋 Daftar Sheet di Spreadsheet:</p>

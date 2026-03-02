@@ -176,15 +176,6 @@ function buildRow(headers, data) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ACTION: setup — Hanya membuat sheet yang BELUM ADA
-//  ⚠ TIDAK mengubah sheet yang sudah ada!
-// ═══════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════
-//  ACTION: diagnose — Laporan status sheet & koneksi
-// ═══════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════
 //  ACTION: getAllData — Auto-discover & load ALL relevant data
 //  Scans all sheets, auto-maps to employees/attendance/payslips
 //  Uses header pattern matching (no fixed sheet names needed)
@@ -409,7 +400,7 @@ function handleSetup() {
 // ═══════════════════════════════════════════════════════════════
 
 function handleLogin(data) {
-  var opsId = String(data.opsId || '').trim().toUpperCase().replace('OPS', '');
+  var opsId = String(data.opsId || '').trim().toUpperCase().replace(/^OPS/i, '');
   var nik = String(data.nik || '').trim();
 
   if (!opsId || !nik) return { error: 'ID dan NIK wajib diisi' };
@@ -431,7 +422,7 @@ function handleLogin(data) {
   var tz = Session.getScriptTimeZone();
 
   for (var i = 1; i < allData.length; i++) {
-    var rowOps = String(allData[i][opsCol]).trim().replace('OPS', '');
+    var rowOps = String(allData[i][opsCol]).trim().toUpperCase().replace(/^OPS/i, '');
     var rowNik = String(allData[i][nikCol]).trim();
 
     if (rowOps === opsId && rowNik === nik) {
