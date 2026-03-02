@@ -494,21 +494,22 @@ function applyTheme(theme) {
   const lbl = document.getElementById('themeLabel');
   if (lbl) lbl.textContent = theme === 'light' ? 'Mode Terang' : 'Mode Gelap';
   // Re-render active chart colors if any charts are showing
-  if (typeof updateChartsTheme === 'function') updateChartsTheme();
+  try { if (typeof updateChartsTheme === 'function') updateChartsTheme(); } catch(e) {}
 }
 function toggleTheme() {
   const cur = getTheme();
   applyTheme(cur === 'dark' ? 'light' : 'dark');
 }
-// Apply saved theme immediately
-applyTheme(getTheme());
 
 // ═══════════════════════════════════════════════════════════════
-//  CONFIG & STATE
+//  CONFIG & STATE (must be before applyTheme call)
 // ═══════════════════════════════════════════════════════════════
 const DEFAULT_API = "https://script.google.com/macros/s/AKfycbyOl0kKdy6Dl18yhH9z9sX3-n0F8XGONaVRNAhy-CXqbplhfmDQeT1JxON94k4GmjtN/exec";
 let API = localStorage.getItem('bas_api_url') || DEFAULT_API;
 let employees=[], attMap={}, payMap={}, charts={}, curTab='overview';
+
+// Apply saved theme immediately (after charts declared)
+applyTheme(getTheme());
 
 // ═══════════════════════════════════════════════════════════════
 //  OWNER / KORLAP PROFILE
