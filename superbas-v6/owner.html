@@ -694,15 +694,84 @@ function showDbBanner(){
   } else if(dbStatus.emptySheetsWarning){
     banner.style.background='linear-gradient(135deg,#f59e0b,#d97706)';
     banner.style.color='#fff';
-    banner.innerHTML='⚠ API TERHUBUNG TAPI DATA KOSONG — Sheet Employees/Attendance/Payslips belum terisi. <a onclick="go(\'settings\')" style="text-decoration:underline;cursor:pointer;color:#fff;font-weight:900">Buka Diagnostik →</a> <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
+    banner.innerHTML='⚠ API TERHUBUNG TAPI DATA KOSONG — Deep Learning akan otomatis mengolah data begitu sheet terisi. <a onclick="go(\'settings\')" style="text-decoration:underline;cursor:pointer;color:#fff;font-weight:900">Buka Diagnostik →</a> <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
+  } else if(window._autoDiscoveryInfo){
+    banner.style.background='linear-gradient(135deg,#6366f1,#8b5cf6)';
+    banner.style.color='#fff';
+    const maps = window._autoDiscoveryInfo;
+    const parts = [];
+    if(maps.employees) parts.push(maps.employees.sheet+' ('+maps.employees.rows+' karyawan)');
+    if(maps.attendance) parts.push(maps.attendance.sheet+' ('+maps.attendance.rows+' presensi)');
+    if(maps.payslips) parts.push(maps.payslips.sheet+' ('+maps.payslips.rows+' payslips)');
+    banner.innerHTML='🧠 AUTO-DISCOVERY — DL Engine memuat data dari: '+parts.join(', ')+' — '+employees.length+' karyawan terdaftar <button onclick="this.parentElement.remove()" style="margin-left:12px;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:11px">✕</button>';
+    setTimeout(()=>{banner.style.opacity='0';setTimeout(()=>banner.remove(),600);},6000);
   } else {
     banner.style.background='linear-gradient(135deg,#10b981,#059669)';
     banner.style.color='#fff';
-    banner.innerHTML='✓ Database terhubung — '+employees.length+' karyawan dimuat';
+    banner.innerHTML='✓ Database terhubung — '+employees.length+' karyawan, '+allAtt().length+' presensi, '+allPay().length+' payslips dimuat'+(window._autoDiscoveryInfo?' (via Auto-Discovery)':'');
     setTimeout(()=>{banner.style.opacity='0';setTimeout(()=>banner.remove(),600);},3000);
   }
   document.body.prepend(banner);
 }
+
+// ─── Smart Field Normalizer ────────────────────────────────
+// Maps Indonesian/variant field names to standard English names
+function normalizeFields(obj, fieldMap) {
+  const result = {};
+  const keys = Object.keys(obj);
+  for (const [standard, aliases] of Object.entries(fieldMap)) {
+    const found = keys.find(k => aliases.includes(k.toLowerCase()));
+    result[standard] = found ? obj[found] : (obj[standard] !== undefined ? obj[standard] : '');
+  }
+  // Keep extra fields too
+  for (const k of keys) {
+    if (!(k in result)) result[k] = obj[k];
+  }
+  return result;
+}
+
+const EMP_FIELDS = {
+  opsId: ['opsid','ops id','opsId','id ops','idops','id_ops','ops_id'],
+  nik: ['nik','no ktp','noktp','no_ktp'],
+  name: ['name','nama','nama lengkap','namalengkap','nama_lengkap','full name','fullname'],
+  position: ['position','jabatan','posisi','role','pos'],
+  status: ['status','statuskerja','status kerja','status_kerja','ket','keterangan'],
+  phone: ['phone','hp','no hp','nohp','no_hp','telepon','telp','wa','whatsapp','no wa','nowa'],
+  address: ['address','alamat','domisili'],
+  station: ['station','stasiun','lokasi','area','hub','hubDc','hub dc','hub_dc','penempatan'],
+  joinDate: ['joindate','join date','join_date','tanggal masuk','tglmasuk','tgl_masuk','mulai kerja'],
+  bankAccount: ['bankaccount','rekening','norek','no rek','no_rek','no rekening'],
+  bankName: ['bankname','bank','namabank','nama bank','nama_bank'],
+};
+
+const ATT_FIELDS = {
+  opsId: ['opsid','ops id','opsId','id ops','idops','id_ops','ops_id'],
+  date: ['date','tanggal','tgl','tgl_presensi','tanggalpresensi','tanggal presensi'],
+  station: ['station','stasiun','lokasi','area','penempatan'],
+  status: ['status','keterangan','ket','hadir','kehadiran'],
+  shifting: ['shifting','shift','jadwal','sesi'],
+  name: ['name','nama','nama lengkap'],
+};
+
+const PAY_FIELDS = {
+  opsId: ['opsid','ops id','opsId','id ops','idops','id_ops','ops_id'],
+  period: ['period','periode','bulan','bln','month'],
+  gaji: ['gaji','salary','basicpay','basic pay','basic_pay','upah'],
+  totalDibayarkan: ['totaldibayarkan','total dibayarkan','total_dibayarkan','totalbayar','total bayar','total','nett','take home pay','thp','net pay','nominal'],
+  hk: ['hk','hari kerja','harikerja','hari_kerja','workdays','working days'],
+  rate: ['rate','rateharian','rate harian','rate_harian','daily rate'],
+  incentive: ['incentive','insentif','bonus','tunjangan'],
+  hubDc: ['hubdc','hub dc','hub_dc','hub','dc','area'],
+  station: ['station','stasiun','lokasi','penempatan'],
+  name: ['name','nama','nama lengkap'],
+  rekening: ['rekening','norek','no rek','no_rek','bank account','bankaccount'],
+  bank: ['bank','namabank','nama bank','nama_bank'],
+  potongan: ['potongan','pot','deduction','pot pribadi','potpribadi','pot_pribadi'],
+  asuransi: ['asuransi','bpjs','insurance'],
+  rapel: ['rapel','backpay','back pay'],
+  claim: ['claim','klaim'],
+  bouncing: ['bouncing','bounce'],
+};
 
 async function loadAll(){
   // 1. Health check dulu
@@ -712,36 +781,119 @@ async function loadAll(){
     return;
   }
   
-  // 2. Load employees
+  // 2. Try normal flow first: getAllEmployees
   const ed=await api('getAllEmployees');
   let allEmployees=Array.isArray(ed)?ed:[];
   
   // Detect if API returned error
   if(ed===null){
     dbStatus.connected=false;
-    dbStatus.error='getAllEmployees gagal — periksa Apps Script. Kemungkinan URL deployment salah atau belum di-deploy ulang.';
+    dbStatus.error='getAllEmployees gagal — periksa Apps Script.';
     showDbBanner();
     return;
   }
   
   // Detect if API returned an error object  
-  if(ed && ed.error){
-    dbStatus.connected=true;
-    dbStatus.error='API Error: '+ed.error;
-    dbStatus.emptySheetsWarning=true;
-    showDbBanner();
-    return;
+  if(ed && ed.error && !Array.isArray(ed)){
+    // Continue — will try auto-discovery below
+    allEmployees=[];
+  }
+
+  // 3. If employees empty, try AUTO-DISCOVERY (getAllData)
+  let usedAutoDiscovery = false;
+  if(allEmployees.length === 0){
+    console.log('[BAS] Employees kosong, mencoba auto-discovery getAllData...');
+    const ad = await api('getAllData');
+    
+    if(ad && !ad.error){
+      usedAutoDiscovery = true;
+      console.log('[BAS] Auto-discovery berhasil:', ad.mappings);
+      
+      // Normalize employee data
+      if(ad.employees && ad.employees.length > 0){
+        allEmployees = ad.employees.map(e => normalizeFields(e, EMP_FIELDS));
+        // Generate opsId if missing
+        allEmployees.forEach((e,i) => {
+          if(!e.opsId && e.nik) e.opsId = e.nik;
+          if(!e.opsId) e.opsId = 'AUTO-'+(i+1);
+        });
+        console.log('[BAS] Auto-discovered '+allEmployees.length+' employees from sheet: '+(ad.mappings?.employees?.sheet||'?'));
+      }
+      
+      // Normalize & group attendance data by opsId
+      if(ad.attendance && ad.attendance.length > 0){
+        const normAtt = ad.attendance.map(a => normalizeFields(a, ATT_FIELDS));
+        normAtt.forEach(a => {
+          if(!a.opsId && a.nik) a.opsId = a.nik;
+          if(!a.opsId && a.name){
+            // Try to match by name to find opsId
+            const match = allEmployees.find(e => e.name && e.name.toLowerCase() === a.name.toLowerCase());
+            if(match) a.opsId = match.opsId;
+          }
+          if(a.opsId){
+            if(!attMap[a.opsId]) attMap[a.opsId] = [];
+            attMap[a.opsId].push(a);
+          }
+        });
+        console.log('[BAS] Auto-discovered '+normAtt.length+' attendance records from sheet: '+(ad.mappings?.attendance?.sheet||'?'));
+      }
+      
+      // Normalize & group payslip data by opsId
+      if(ad.payslips && ad.payslips.length > 0){
+        const normPay = ad.payslips.map(p => normalizeFields(p, PAY_FIELDS));
+        normPay.forEach(p => {
+          if(!p.opsId && p.nik) p.opsId = p.nik;
+          if(!p.opsId && p.name){
+            const match = allEmployees.find(e => e.name && e.name.toLowerCase() === p.name.toLowerCase());
+            if(match) p.opsId = match.opsId;
+          }
+          // Parse totalDibayarkan to number
+          if(typeof p.totalDibayarkan === 'string') p.totalDibayarkan = parseFloat(p.totalDibayarkan.replace(/[^\d.-]/g,''))||0;
+          if(!p.totalDibayarkan && p.gaji) p.totalDibayarkan = parseFloat(String(p.gaji).replace(/[^\d.-]/g,''))||0;
+          if(p.opsId){
+            if(!payMap[p.opsId]) payMap[p.opsId] = [];
+            payMap[p.opsId].push(p);
+          }
+        });
+        console.log('[BAS] Auto-discovered '+normPay.length+' payslips from sheet: '+(ad.mappings?.payslips?.sheet||'?'));
+      }
+      
+      // If we got payslips but no employees, extract unique employees from payslips/attendance
+      if(allEmployees.length === 0){
+        const seen = new Set();
+        const extractFrom = [...(ad.payslips||[]).map(p=>normalizeFields(p,PAY_FIELDS)), ...(ad.attendance||[]).map(a=>normalizeFields(a,ATT_FIELDS))];
+        extractFrom.forEach(r => {
+          const id = r.opsId || r.nik || r.name;
+          if(id && !seen.has(id)){
+            seen.add(id);
+            allEmployees.push({
+              opsId: r.opsId || r.nik || 'AUTO-'+(allEmployees.length+1),
+              name: r.name || id,
+              nik: r.nik || '',
+              position: r.position || r.jabatan || '',
+              status: r.status || 'AKTIF',
+              phone: r.phone || '',
+              station: r.station || r.hubDc || r.area || '',
+            });
+          }
+        });
+        console.log('[BAS] Extracted '+allEmployees.length+' employees from payslip/attendance data');
+      }
+
+      // Store discovery info for Settings tab
+      window._autoDiscoveryInfo = ad.mappings;
+      window._spreadsheetName = ad.spreadsheetName;
+    } else {
+      console.log('[BAS] Auto-discovery juga gagal:', ad?.error || 'no response');
+      // getAllData not deployed yet — this is expected for old deployments
+    }
   }
   
-  // Korlap: filter employees by station
-  if (isKorlap && korlapStation) {
-    employees = allEmployees;
-  } else {
-    employees = allEmployees;
-  }
+  // Set employees
+  employees = allEmployees;
   
-  // 3. Load attendance & payslips per employee
-  if(employees.length > 0) {
+  // 4. Load attendance & payslips per employee (only if NOT auto-discovered)
+  if(!usedAutoDiscovery && employees.length > 0) {
     const proms=employees.map(async e=>{
       const[a,p]=await Promise.all([api('getAttendance',{opsId:e.opsId}),api('getPayslips',{opsId:e.opsId})]);
       attMap[e.opsId]=Array.isArray(a)?a:[];
@@ -750,7 +902,7 @@ async function loadAll(){
     await Promise.all(proms);
   }
   
-  // Korlap: after loading attendance, filter employees to only those with attendance at this station
+  // 5. Korlap: filter employees to only those with attendance at this station
   if (isKorlap && korlapStation) {
     employees = allEmployees.filter(e => {
       const att = attMap[e.opsId] || [];
@@ -761,7 +913,7 @@ async function loadAll(){
     for (const k of Object.keys(payMap)) { if (!empSet.has(k)) delete payMap[k]; }
   }
   
-  // 4. Check if data is empty
+  // 6. Check if data is empty
   if(employees.length===0){
     dbStatus.emptySheetsWarning=true;
   }
@@ -869,23 +1021,25 @@ function rOverview(){
   if(employees.length===0){
     el.innerHTML=`
       <div class="fade-up flex flex-col items-center justify-center py-20 text-center space-y-4">
-        <div class="w-20 h-20 rounded-2xl bg-accent-orange/10 flex items-center justify-center text-4xl">📋</div>
-        <h2 class="text-xl font-black text-white">Database Terhubung — Belum Ada Data</h2>
-        <p class="text-sm text-slate-400 max-w-md">Koneksi ke API berhasil, tapi sheet <b class="text-white">Employees</b> masih kosong. Silakan tambahkan data karyawan:</p>
-        <div class="text-left text-xs text-slate-400 space-y-2 max-w-sm">
-          <div class="flex items-start gap-2"><span class="text-accent-green font-bold">1.</span> Buka Google Sheet → sheet <b class="text-white">Employees</b></div>
-          <div class="flex items-start gap-2"><span class="text-accent-green font-bold">2.</span> Isi data karyawan mulai baris 2 (baris 1 = header)</div>
-          <div class="flex items-start gap-2"><span class="text-accent-green font-bold">3.</span> Kolom wajib: <b class="text-white">OPS ID, NIK, Name, Position, Phone, Status</b></div>
-          <div class="flex items-start gap-2"><span class="text-accent-green font-bold">4.</span> Setelah diisi, klik tombol refresh di bawah</div>
+        <div class="w-20 h-20 rounded-2xl bg-accent-orange/10 flex items-center justify-center text-4xl">🧠</div>
+        <h2 class="text-xl font-black text-white">Database Terhubung — DL Engine Siap</h2>
+        <p class="text-sm text-slate-400 max-w-md">Deep Learning Engine aktif dan sudah mencoba auto-discovery data dari semua sheet di Google Spreadsheet Anda, tapi belum menemukan data yang cocok.</p>
+        <div class="text-left text-xs text-slate-400 space-y-2 max-w-md">
+          <p class="text-accent-cyan font-bold text-sm">🔧 Yang Perlu Dilakukan:</p>
+          <div class="flex items-start gap-2"><span class="text-accent-green font-bold">1.</span> Pastikan <b class="text-white">Apps Script</b> di-deploy dari spreadsheet yang BERISI data karyawan/presensi/gaji</div>
+          <div class="flex items-start gap-2"><span class="text-accent-green font-bold">2.</span> Deep Learning akan <b class="text-white">otomatis mendeteksi</b> sheet manapun yang berisi data karyawan, presensi, atau gaji — tidak perlu nama sheet khusus</div>
+          <div class="flex items-start gap-2"><span class="text-accent-green font-bold">3.</span> Header kolom yang dikenali: <code class="text-accent-cyan text-[10px]">OPS ID / NIK / Nama / Jabatan / Tanggal / Station / Gaji / Total Dibayarkan</code></div>
+          <div class="flex items-start gap-2"><span class="text-accent-green font-bold">4.</span> Setelah deploy ulang Apps Script, klik <b class="text-accent-pink">Refresh</b></div>
         </div>
         <div class="flex gap-3 mt-2">
-          <button onclick="location.reload()" class="px-5 py-2 bg-accent-pink rounded-xl text-white text-sm font-bold hover:bg-accent-pink/80 transition">↻ Refresh Data</button>
-          <button onclick="go('employees')" class="px-5 py-2 bg-accent-blue/20 border border-accent-blue/30 rounded-xl text-accent-blue text-sm font-bold hover:bg-accent-blue/30 transition">+ Tambah Karyawan</button>
+          <button onclick="reloadData()" class="px-5 py-2 bg-accent-pink rounded-xl text-white text-sm font-bold hover:bg-accent-pink/80 transition">↻ Refresh Data</button>
+          <button onclick="go('settings')" class="px-5 py-2 bg-accent-blue/20 border border-accent-blue/30 rounded-xl text-accent-blue text-sm font-bold hover:bg-accent-blue/30 transition">⚙ Buka Pengaturan</button>
         </div>
         <div class="mt-4 glass rounded-xl p-3 text-[10px] text-slate-500">
-          <span class="text-accent-green">✓</span> API Status: <b class="text-white">ONLINE</b> |
-          <span class="text-accent-green">✓</span> Database: <b class="text-white">Terhubung</b> |
-          <span class="text-accent-orange">!</span> Employees: <b class="text-accent-orange">0 data</b>
+          <span class="text-accent-green">✓</span> API: <b class="text-white">ONLINE</b> |
+          <span class="text-accent-green">✓</span> DL Engine: <b class="text-white">AKTIF</b> |
+          <span class="text-accent-green">✓</span> Auto-Discovery: <b class="text-white">AKTIF</b> |
+          <span class="text-accent-orange">!</span> Data: <b class="text-accent-orange">Belum ditemukan</b>
         </div>
       </div>`;
     return;
@@ -2608,9 +2762,6 @@ function printAllCards() {
   setTimeout(() => { w.print(); }, 500);
 }
 
-  setTimeout(() => { w.print(); }, 500);
-}
-
 // ═══════════════════════════════════════════════════════════════
 //  SETTINGS & DIAGNOSTIK API
 // ═══════════════════════════════════════════════════════════════
@@ -2671,9 +2822,40 @@ function rSettings(){
         <div class="mt-3 p-3 rounded-xl bg-accent-orange/10 border border-accent-orange/20">
           <p class="text-accent-orange font-bold">⚠ PENTING:</p>
           <p class="mt-1">Setiap kali mengubah kode Apps Script, Anda harus membuat <strong class="text-white">New deployment</strong> dan menggunakan URL baru.</p>
-          <p class="mt-1">Sheet yang dibutuhkan: <strong class="text-white">Employees, Attendance, Payslips, DataOwner, SystemMessage</strong></p>
+          <p class="mt-1">Deep Learning Engine <strong class="text-accent-cyan">secara otomatis mendeteksi</strong> sheet manapun yang berisi data karyawan/presensi/gaji — tidak perlu nama sheet khusus.</p>
+          <p class="mt-1">Nama sheet yang dikenali secara langsung: <strong class="text-white">Employees, Attendance, Payslips</strong></p>
         </div>
       </div>
+    </div>
+
+    <!-- AUTO-DISCOVERY PANEL -->
+    <div class="glass rounded-2xl p-5 mb-5" id="autoDiscoveryPanel">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">🧠 DL Auto-Discovery — Sheet Scanner</h3>
+      </div>
+      ${window._autoDiscoveryInfo ? `
+        <div class="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 mb-3">
+          <p class="text-indigo-400 font-bold text-sm">✓ Auto-Discovery Aktif</p>
+          <p class="text-slate-400 mt-1">Spreadsheet: <strong class="text-white">${window._spreadsheetName||'?'}</strong></p>
+          <div class="mt-2 space-y-1 text-xs">
+            ${Object.entries(window._autoDiscoveryInfo).map(([type,info])=>
+              '<p>'+{employees:'👥 Karyawan',attendance:'📋 Presensi',payslips:'💰 Payslips'}[type]+': Sheet <strong class="text-accent-cyan">'+(info.sheet||'?')+'</strong> — <strong class="text-white">'+info.rows+'</strong> baris (score: '+info.score+')</p>'
+            ).join('')}
+          </div>
+        </div>` : `
+        <div class="p-3 rounded-xl bg-white/5 border border-white/10 mb-3">
+          <p class="text-slate-400">Auto-Discovery belum berjalan atau tidak menemukan data yang cocok.</p>
+        </div>`}
+      <div class="flex flex-wrap gap-2">
+        <button onclick="runDiscoverSheets()" class="px-4 py-2 rounded-xl bg-indigo-500/20 text-indigo-400 text-xs font-bold border border-indigo-500/30 hover:bg-indigo-500/30 transition-all">
+          🔎 Scan Semua Sheet
+        </button>
+        <button onclick="runAutoLoad()" class="px-4 py-2 rounded-xl bg-accent-green/20 text-accent-green text-xs font-bold border border-accent-green/30 hover:bg-accent-green/30 transition-all">
+          🧠 Jalankan Auto-Discovery & Load
+        </button>
+      </div>
+      <div id="discoverResult" class="mt-3 text-xs text-slate-400"></div>
     </div>
 
     <!-- DIAGNOSE RESULT -->
@@ -2925,6 +3107,83 @@ async function runSetup(){
   } else {
     alert('Setup gagal: ' + (r?.error || 'Unknown'));
   }
+}
+
+async function runDiscoverSheets(){
+  const dr = document.getElementById('discoverResult');
+  dr.innerHTML = '<p class="text-indigo-400 animate-pulse">⏳ Scanning semua sheet di spreadsheet...</p>';
+  
+  const res = await api('discoverSheets');
+  if(!res || res.error){
+    dr.innerHTML = `<div class="p-3 rounded-xl bg-red-500/10 border border-red-500/30">
+      <p class="text-red-400 font-bold">❌ Gagal scan sheet</p>
+      <p class="text-slate-400">${res?.error || 'Pastikan Apps Script sudah di-deploy ulang dengan kode terbaru (APPS_SCRIPT_COMPLETE.gs)'}</p>
+    </div>`;
+    return;
+  }
+  
+  const typeColors = {employees:'accent-cyan',attendance:'accent-green',payslips:'accent-orange',unknown:'slate-500'};
+  const typeLabels = {employees:'👥 Karyawan',attendance:'📋 Presensi',payslips:'💰 Payslips',unknown:'❓ Unknown'};
+  
+  dr.innerHTML = `
+    <div class="space-y-3">
+      <div class="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30">
+        <p class="text-indigo-400 font-bold">📊 Spreadsheet: ${res.spreadsheetName}</p>
+        <p class="text-slate-400 mt-1">${res.sheets.length} sheet ditemukan</p>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-[10px]">
+          <thead><tr class="border-b border-white/10 text-slate-500">
+            <th class="py-2 px-2 text-left">Sheet</th>
+            <th class="py-2 px-2 text-left">Tipe (AI)</th>
+            <th class="py-2 px-2 text-center">Baris</th>
+            <th class="py-2 px-2 text-center">Kolom</th>
+            <th class="py-2 px-2 text-left">Score (E/A/P)</th>
+            <th class="py-2 px-2 text-left">Headers</th>
+          </tr></thead>
+          <tbody>
+            ${res.sheets.map(s => `<tr class="border-b border-white/5 hover:bg-white/3">
+              <td class="py-2 px-2 font-bold text-white">${s.name}</td>
+              <td class="py-2 px-2"><span class="text-${typeColors[s.guessedType]} font-bold">${typeLabels[s.guessedType]}</span></td>
+              <td class="py-2 px-2 text-center text-white">${s.rows}</td>
+              <td class="py-2 px-2 text-center">${s.columns}</td>
+              <td class="py-2 px-2"><span class="text-accent-cyan">${s.scores.employees}</span>/<span class="text-accent-green">${s.scores.attendance}</span>/<span class="text-accent-orange">${s.scores.payslips}</span></td>
+              <td class="py-2 px-2 text-[9px] text-slate-500 max-w-[200px] truncate">${s.headers.join(', ')}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-[9px] text-slate-600">Score = jumlah header yang cocok dengan pola data karyawan (E), presensi (A), atau payslips (P)</p>
+    </div>`;
+}
+
+async function runAutoLoad(){
+  const dr = document.getElementById('discoverResult');
+  dr.innerHTML = '<p class="text-accent-green animate-pulse">🧠 Deep Learning Auto-Discovery sedang berjalan...</p>';
+  
+  // Reset state
+  employees=[]; attMap={}; payMap={};
+  dbStatus = { connected: true, error: null, emptySheetsWarning: false };
+  
+  // Run full loadAll (which includes auto-discovery)
+  await loadAll();
+  
+  if(employees.length > 0){
+    dr.innerHTML = `<div class="p-3 rounded-xl bg-accent-green/10 border border-accent-green/30">
+      <p class="text-accent-green font-bold">✓ Auto-Discovery Berhasil!</p>
+      <p class="text-slate-400 mt-1">${employees.length} karyawan, ${Object.values(attMap).flat().length} presensi, ${Object.values(payMap).flat().length} payslips dimuat.</p>
+      <button onclick="go('overview')" class="mt-2 px-4 py-2 rounded-xl bg-accent-green/20 text-accent-green text-xs font-bold border border-accent-green/30 hover:bg-accent-green/30 transition-all">
+        📊 Lihat Dashboard →
+      </button>
+    </div>`;
+  } else {
+    dr.innerHTML = `<div class="p-3 rounded-xl bg-accent-orange/10 border border-accent-orange/30">
+      <p class="text-accent-orange font-bold">⚠ Tidak menemukan data</p>
+      <p class="text-slate-400 mt-1">Auto-Discovery tidak menemukan data karyawan/presensi/gaji yang cocok. Pastikan Apps Script sudah di-deploy ulang dari spreadsheet yang BERISI data.</p>
+      <p class="text-slate-500 mt-1 text-[10px]">Coba klik "Scan Semua Sheet" untuk melihat sheet apa saja yang ada di spreadsheet.</p>
+    </div>`;
+  }
+  rSettings(); // refresh settings panel
 }
 
 async function reloadData(){

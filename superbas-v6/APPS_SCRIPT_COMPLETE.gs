@@ -58,6 +58,8 @@ function doPost(e) {
       case 'updatePayslipStatus':return jsonResponse(handleUpdatePayslipStatus(data));
       case 'setup':              return jsonResponse(handleSetup());
       case 'diagnose':           return jsonResponse(handleDiagnose());
+      case 'getAllData':          return jsonResponse(handleGetAllData());
+      case 'discoverSheets':     return jsonResponse(handleDiscoverSheets());
       default:                   return jsonResponse({ error: 'Unknown action: ' + action });
     }
   } catch (err) {
@@ -175,6 +177,151 @@ function buildRow(headers, data) {
 //  ACTION: setup — Hanya membuat sheet yang BELUM ADA
 //  ⚠ TIDAK mengubah sheet yang sudah ada!
 // ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+//  ACTION: diagnose — Laporan status sheet & koneksi
+// ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+//  ACTION: getAllData — Auto-discover & load ALL relevant data
+//  Scans all sheets, auto-maps to employees/attendance/payslips
+//  Uses header pattern matching (no fixed sheet names needed)
+// ═══════════════════════════════════════════════════════════════
+
+function handleGetAllData() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheets = ss.getSheets();
+    var result = {
+      employees: [],
+      attendance: [],
+      payslips: [],
+      mappings: {},
+      spreadsheetName: ss.getName()
+    };
+
+    // Score each sheet to determine its type
+    var empKeywords = ['OPS ID','OPSID','NIK','NAME','NAMA','PHONE','POSITION','JABATAN','STATUS','ADDRESS','ALAMAT'];
+    var attKeywords = ['DATE','TANGGAL','STATION','STASIUN','SHIFTING','SHIFT','HADIR','ALPHA','OPS ID','OPSID'];
+    var payKeywords = ['GAJI','SALARY','TOTAL DIBAYARKAN','RATE','INCENTIVE','RAPEL','PERIOD','PERIODE','HK','CLAIM','POTONGAN','POT PRIBADI','ASURANSI','REKENING','BANK','NOMINAL','BOUNCING'];
+
+    for (var i = 0; i < sheets.length; i++) {
+      var sheet = sheets[i];
+      var name = sheet.getName();
+      var lastRow = sheet.getLastRow();
+      var lastCol = sheet.getLastColumn();
+      if (lastRow < 2 || lastCol < 2) continue; // Skip empty/header-only
+
+      var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h){return String(h).trim();});
+      var headersUpper = headers.map(function(h){return h.toUpperCase().replace(/\s+/g,' ');});
+
+      // Score matching
+      var empScore = 0, attScore = 0, payScore = 0;
+      headersUpper.forEach(function(h) {
+        empKeywords.forEach(function(kw){ if(h.indexOf(kw)!==-1) empScore++; });
+        attKeywords.forEach(function(kw){ if(h.indexOf(kw)!==-1) attScore++; });
+        payKeywords.forEach(function(kw){ if(h.indexOf(kw)!==-1) payScore++; });
+      });
+
+      // Also check sheet name for hints
+      var nameUpper = name.toUpperCase();
+      if(nameUpper.indexOf('EMPLOYEE')!==-1||nameUpper.indexOf('KARYAWAN')!==-1||nameUpper.indexOf('DATA KARYAWAN')!==-1) empScore+=5;
+      if(nameUpper.indexOf('ATTEND')!==-1||nameUpper.indexOf('PRESENSI')!==-1||nameUpper.indexOf('ABSEN')!==-1||nameUpper.indexOf('HADIR')!==-1) attScore+=5;
+      if(nameUpper.indexOf('PAY')!==-1||nameUpper.indexOf('GAJI')!==-1||nameUpper.indexOf('SALARY')!==-1||nameUpper.indexOf('SLIP')!==-1||nameUpper.indexOf('REKAP')!==-1) payScore+=5;
+
+      // Direct name match (highest priority)
+      if(nameUpper==='EMPLOYEES'||nameUpper==='EMPLOYEE') empScore+=20;
+      if(nameUpper==='ATTENDANCE') attScore+=20;
+      if(nameUpper==='PAYSLIPS'||nameUpper==='PAYSLIP') payScore+=20;
+
+      var maxScore = Math.max(empScore, attScore, payScore);
+      if(maxScore < 2) continue; // Not enough matching
+
+      var fields = headers.map(toCamelCase);
+      var tz = Session.getScriptTimeZone();
+      var data = sheet.getDataRange().getValues();
+      var objects = [];
+      for (var r = 1; r < data.length; r++) {
+        var obj = {};
+        var hasData = false;
+        for (var c = 0; c < headers.length; c++) {
+          var val = data[r][c];
+          if (val instanceof Date) val = Utilities.formatDate(val, tz, 'yyyy-MM-dd');
+          obj[fields[c]] = val;
+          if (val !== '' && val !== null && val !== undefined) hasData = true;
+        }
+        if (hasData) objects.push(obj);
+      }
+
+      var type = empScore >= attScore && empScore >= payScore ? 'employees' :
+                 attScore >= empScore && attScore >= payScore ? 'attendance' : 'payslips';
+
+      // If target array is empty or this sheet has more data
+      if(result[type].length === 0 || objects.length > result[type].length){
+        result[type] = objects;
+        result.mappings[type] = { sheet: name, rows: objects.length, headers: headers, score: maxScore };
+      }
+    }
+
+    return result;
+  } catch(err) {
+    return { error: err.toString() };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ACTION: discoverSheets — Report all sheets with auto-mapping
+// ═══════════════════════════════════════════════════════════════
+
+function handleDiscoverSheets() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheets = ss.getSheets();
+    var report = {
+      spreadsheetName: ss.getName(),
+      spreadsheetUrl: ss.getUrl(),
+      sheets: []
+    };
+
+    var empKeywords = ['OPS ID','OPSID','NIK','NAME','NAMA','PHONE','POSITION'];
+    var attKeywords = ['DATE','TANGGAL','STATION','SHIFTING','SHIFT','OPS ID','OPSID'];
+    var payKeywords = ['GAJI','SALARY','TOTAL DIBAYARKAN','RATE','INCENTIVE','HK','PERIOD'];
+
+    for (var i = 0; i < sheets.length; i++) {
+      var s = sheets[i];
+      var name = s.getName();
+      var lastRow = s.getLastRow();
+      var lastCol = s.getLastColumn();
+      var headers = lastCol > 0 ? s.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h){return String(h).trim();}) : [];
+      var headersUpper = headers.map(function(h){return h.toUpperCase().replace(/\s+/g,' ');});
+
+      var empScore = 0, attScore = 0, payScore = 0;
+      headersUpper.forEach(function(h) {
+        empKeywords.forEach(function(kw){ if(h.indexOf(kw)!==-1) empScore++; });
+        attKeywords.forEach(function(kw){ if(h.indexOf(kw)!==-1) attScore++; });
+        payKeywords.forEach(function(kw){ if(h.indexOf(kw)!==-1) payScore++; });
+      });
+
+      var maxScore = Math.max(empScore, attScore, payScore);
+      var guessedType = maxScore < 1 ? 'unknown' :
+        empScore >= attScore && empScore >= payScore ? 'employees' :
+        attScore >= empScore && attScore >= payScore ? 'attendance' : 'payslips';
+
+      report.sheets.push({
+        name: name,
+        rows: Math.max(0, lastRow - 1),
+        columns: lastCol,
+        headers: headers,
+        scores: { employees: empScore, attendance: attScore, payslips: payScore },
+        guessedType: guessedType
+      });
+    }
+
+    return report;
+  } catch(err) {
+    return { error: err.toString() };
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  ACTION: diagnose — Laporan status sheet & koneksi
