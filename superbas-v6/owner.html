@@ -13,8 +13,8 @@
     })();
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script async src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script async src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script>
     if (typeof tailwind !== 'undefined') tailwind.config = {
@@ -2734,6 +2734,7 @@ let idcardMode = 'single';
 let idcardPreviewData = [];
 
 function makeQR(text, size) {
+  if (typeof qrcode === 'undefined') { console.warn('[BAS] QR code lib not loaded'); return ''; }
   var qr = qrcode(0, 'H');
   qr.addData(text);
   qr.make();
@@ -3718,18 +3719,21 @@ function applyRoleUI() {
 console.log('[BAS] Calling init()...');
 init();
 
-// Retry Chart.js init if CDN was slow
-if (typeof Chart === 'undefined') {
-  window.addEventListener('load', function() {
-    if (typeof Chart !== 'undefined') {
-      Chart.defaults.font.family = 'Inter';
-      setChartTheme();
-      console.log('[BAS] Chart.js loaded late — initialized');
-    } else {
-      console.warn('[BAS] Chart.js CDN not reachable — charts disabled');
+// Chart.js loads async — initialize when ready
+window.addEventListener('load', function() {
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.font.family = 'Inter';
+    setChartTheme();
+    console.log('[BAS] Chart.js loaded & initialized');
+    // Re-render current tab to pick up charts
+    if (curTab && typeof go === 'function') {
+      var R={overview:typeof rOverview!=='undefined'?rOverview:null};
+      if (R[curTab]) R[curTab]();
     }
-  });
-}
+  } else {
+    console.warn('[BAS] Chart.js CDN not reachable — charts disabled');
+  }
+});
 </script>
 </body>
 </html>
