@@ -256,7 +256,9 @@ function refreshData() {
     
     // Clear cache
     const cache = CacheService.getScriptCache();
-    cache.removeAll(['api_data_' + CONFIG.API_ENDPOINT]);
+    if (CONFIG.API_ENDPOINT) {
+      cache.remove('api_data_' + CONFIG.API_ENDPOINT);
+    }
     
     // Reconnect data
     connectDataToSheet();
@@ -292,7 +294,9 @@ function onOpen() {
 function clearCache() {
   try {
     const cache = CacheService.getScriptCache();
-    cache.removeAll(['api_data_' + CONFIG.API_ENDPOINT]);
+    if (CONFIG.API_ENDPOINT) {
+      cache.remove('api_data_' + CONFIG.API_ENDPOINT);
+    }
     
     SpreadsheetApp.getUi().alert('Success', 'Cache cleared successfully!', SpreadsheetApp.getUi().ButtonSet.OK);
     Logger.log('Cache cleared');
