@@ -445,7 +445,7 @@ function handleLogin(data) {
 // ═══════════════════════════════════════════════════════════════
 
 function handleLoginOwner(data) {
-  var opsId = String(data.opsId || '').trim();
+  var opsId = String(data.opsId || '').trim().toUpperCase().replace(/^OPS/i, '');
   var nik = String(data.nik || '').trim();
 
   if (!opsId || !nik) return { isOwner: false, error: 'Missing credentials' };
@@ -454,19 +454,38 @@ function handleLoginOwner(data) {
   if (!sheet) return { isOwner: false, error: 'DataOwner sheet not found' };
 
   var rows = sheet.getDataRange().getValues();
+  if (rows.length < 2) return { isOwner: false, error: 'DataOwner kosong' };
+
+  // Dynamic header lookup — tidak bergantung urutan kolom
+  var headers = rows[0].map(function(h) { return String(h).trim().toUpperCase(); });
+  var colOps = -1, colNama = -1, colNik = -1, colStation = -1, colWa = -1, colStatus = -1;
+  for (var c = 0; c < headers.length; c++) {
+    var h = headers[c];
+    if (h === 'OPS' || h === 'OPS ID' || h === 'OPSID')       colOps = c;
+    else if (h === 'NAMA' || h === 'NAME')                     colNama = c;
+    else if (h === 'NIK')                                      colNik = c;
+    else if (h === 'STATION' || h === 'STASIUN')               colStation = c;
+    else if (h === 'NOMOR WHATSAPP' || h === 'WA' || h === 'WHATSAPP' || h === 'NO WA') colWa = c;
+    else if (h === 'STATUS' || h === 'ROLE')                   colStatus = c;
+  }
+
+  if (colOps === -1) return { isOwner: false, error: 'Kolom OPS tidak ditemukan di DataOwner' };
+  if (colNik === -1) return { isOwner: false, error: 'Kolom NIK tidak ditemukan di DataOwner' };
+
   for (var i = 1; i < rows.length; i++) {
-    var rowOps     = String(rows[i][0]).trim();
-    var rowNama    = String(rows[i][1]).trim();
-    var rowNik     = String(rows[i][2]).trim();
-    var rowStation = String(rows[i][3]).trim();
-    var rowWa      = String(rows[i][4]).trim();
-    var rowStatus  = String(rows[i][5]).trim().toUpperCase();
+    var rowOps     = String(rows[i][colOps] || '').trim().toUpperCase().replace(/^OPS/i, '');
+    var rowNik     = String(rows[i][colNik >= 0 ? colNik : 2] || '').trim();
 
     if (rowOps === opsId && rowNik === nik) {
+      var rowNama    = colNama >= 0 ? String(rows[i][colNama] || '').trim() : '';
+      var rowStation = colStation >= 0 ? String(rows[i][colStation] || '').trim() : '';
+      var rowWa      = colWa >= 0 ? String(rows[i][colWa] || '').trim() : '';
+      var rowStatus  = colStatus >= 0 ? String(rows[i][colStatus] || '').trim().toUpperCase() : '';
+
       if (rowStatus === 'OWNER' || rowStatus === 'KORLAP') {
         return {
           isOwner: true,
-          ops: rowOps,
+          ops: String(rows[i][colOps] || '').trim(),
           nama: rowNama,
           station: rowStation,
           status: rowStatus,
