@@ -17,7 +17,7 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script>
-    tailwind.config = {
+    if (typeof tailwind !== 'undefined') tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
@@ -906,17 +906,18 @@ const C = {
   multi:['rgba(247,37,133,1)','rgba(67,97,238,1)','rgba(76,201,240,1)','rgba(0,245,212,1)','rgba(255,158,0,1)','rgba(157,78,221,1)','rgba(239,68,68,1)','rgba(99,102,241,1)']
 };
 function setChartTheme() {
+  if (typeof Chart === 'undefined') return;
   const isLight = document.documentElement.classList.contains('light');
   Chart.defaults.color = isLight ? 'rgba(100,116,139,0.8)' : 'rgba(148,163,184,0.6)';
   Chart.defaults.borderColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)';
 }
 setChartTheme();
-Chart.defaults.font.family='Inter';
+if (typeof Chart !== 'undefined') Chart.defaults.font.family='Inter';
 function updateChartsTheme() {
   setChartTheme();
   Object.values(charts).forEach(c => { if(c && c.update) c.update(); });
 }
-function mkChart(id,cfg){if(charts[id])charts[id].destroy();const x=document.getElementById(id);if(!x)return null;charts[id]=new Chart(x,cfg);return charts[id];}
+function mkChart(id,cfg){if(typeof Chart==='undefined'){console.warn('[BAS] Chart.js not loaded');return null;}if(charts[id])charts[id].destroy();const x=document.getElementById(id);if(!x)return null;charts[id]=new Chart(x,cfg);return charts[id];}
 
 // ═══════════════════════════════════════════════════════════════
 //  API
@@ -3680,6 +3681,19 @@ function applyRoleUI() {
 }
 
 init();
+
+// Retry Chart.js init if CDN was slow
+if (typeof Chart === 'undefined') {
+  window.addEventListener('load', function() {
+    if (typeof Chart !== 'undefined') {
+      Chart.defaults.font.family = 'Inter';
+      setChartTheme();
+      console.log('[BAS] Chart.js loaded late — initialized');
+    } else {
+      console.warn('[BAS] Chart.js CDN not reachable — charts disabled');
+    }
+  });
+}
 </script>
 </body>
 </html>
