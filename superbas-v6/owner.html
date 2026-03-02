@@ -251,6 +251,16 @@ const fmtN = n => new Intl.NumberFormat('id-ID').format(n||0);
 const pct = (a,b) => b?((a/b)*100).toFixed(1):'0';
 const svgIcon = d => `<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${d}"/></svg>`;
 
+// Greeting berdasarkan jam
+function getGreetingTime() {
+  const h = new Date().getHours();
+  if (h < 5) return '🌙 Selamat Malam';
+  if (h < 11) return '☀️ Selamat Pagi';
+  if (h < 15) return '🌤️ Selamat Siang';
+  if (h < 18) return '🌅 Selamat Sore';
+  return '🌙 Selamat Malam';
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  ML & DEEP LEARNING ENGINE v2.0
 //  Neural Networks • Autoencoders • Time Series DL • PCA
@@ -1205,9 +1215,22 @@ function rOverview(){
 
   el.innerHTML=`
     ${korlapBanner}
-    <div class="fade-up flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-      <div><h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">Dashboard Overview</h1><p class="text-xs text-slate-500 font-medium mt-0.5">Deep Learning & Real-time Analytics Engine v2.0</p></div>
-      <div class="flex items-center gap-2 text-[10px] font-bold text-slate-500 glass px-3 py-1.5 rounded-lg"><span class="w-2 h-2 rounded-full bg-accent-green pulse-dot"></span>DL Engine Active — ${new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+    <!-- Welcome Greeting -->
+    <div class="fade-up relative overflow-hidden glass rounded-2xl p-5 sm:p-6 border border-white/5">
+      <div class="absolute inset-0 bg-gradient-to-r from-accent-pink/5 via-accent-blue/5 to-accent-cyan/5"></div>
+      <div class="absolute top-0 right-0 w-40 h-40 bg-accent-pink/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+      <div class="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">${getGreetingTime()}</p>
+          <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">${isKorlap ? 'Halo, Korlap ' + (ownerProfile.nama||'') + ' 👋' : 'Selamat Datang, ' + (ownerProfile.nama||'Owner') + ' 👋'}</h1>
+          <p class="text-xs text-slate-400 mt-1">${isKorlap ? 'Station <b class=\"text-accent-orange\">' + korlapStation + '</b> — semua data real-time tersedia.' : 'Semua sistem berjalan normal. Deep Learning Engine v2.0 aktif memproses data Anda.'}</p>
+        </div>
+        <div class="flex items-center gap-2 text-[10px] font-bold text-slate-500 glass px-3 py-1.5 rounded-lg flex-shrink-0"><span class="w-2 h-2 rounded-full bg-accent-green pulse-dot"></span>DL Engine Active — ${new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+      </div>
+    </div>
+
+    <div class="fade-up" style="animation-delay:60ms">
+      <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Dashboard Overview</h2>
     </div>
     
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 fade-up" style="animation-delay:80ms">
