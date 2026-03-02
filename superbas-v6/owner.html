@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Owner Dashboard — PT. BAROKAH AMANAH SENTOSA</title>
   <link rel="icon" href="assets/bas-logo.png" />
+  <!-- Prevent flash: apply saved theme before render -->
+  <script>
+    (function(){
+      var t = localStorage.getItem('bas_owner_theme') || 'dark';
+      document.documentElement.className = t === 'light' ? 'light' : 'dark';
+    })();
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
@@ -150,6 +157,220 @@
     .sidebar-btn { border-radius:14px; }
     .sidebar-btn:hover { transform:translateX(4px); }
     .sidebar-btn.active { transform:translateX(4px); box-shadow: 0 0 24px rgba(247,37,133,0.08); }
+
+    /* ═══════════════════════════════════════════════════════════
+       THEME TOGGLE SWITCH
+       ═══════════════════════════════════════════════════════════ */
+    .theme-toggle {
+      position: relative;
+      width: 52px; height: 28px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 1px solid rgba(255,255,255,0.1);
+      flex-shrink: 0;
+    }
+    .theme-toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #c77dff, #f72585);
+      box-shadow: 0 2px 8px rgba(247,37,133,0.3);
+      transition: all 0.3s cubic-bezier(.4,0,.2,1);
+    }
+    .theme-toggle .toggle-icon {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      font-size: 12px; line-height: 1; transition: all 0.3s;
+    }
+    .theme-toggle .icon-moon { right: 7px; opacity: 0.5; }
+    .theme-toggle .icon-sun { left: 7px; opacity: 0; }
+
+    /* ═══════════════════════════════════════════════════════════
+       LIGHT MODE
+       ═══════════════════════════════════════════════════════════ */
+    html.light body {
+      background: #f0f0f8;
+      color: #1e293b;
+    }
+    html.light ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); }
+    html.light ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
+
+    html.light .glass {
+      background: rgba(255,255,255,0.75);
+      backdrop-filter: blur(24px);
+      border-color: rgba(0,0,0,0.06);
+    }
+    html.light .glass-hover:hover {
+      background: rgba(255,255,255,0.9);
+      border-color: rgba(0,0,0,0.1);
+    }
+
+    /* Sidebar */
+    html.light .sidebar {
+      background: rgba(255,255,255,0.85);
+      border-color: rgba(0,0,0,0.06);
+    }
+    html.light .sidebar .border-white\/5 { border-color: rgba(0,0,0,0.06); }
+    html.light .sidebar-btn { color: #64748b; }
+    html.light .sidebar-btn:hover,
+    html.light .sidebar-btn.active { background: rgba(247,37,133,0.06); }
+    html.light .sidebar-btn.active { color: #f72585; }
+
+    /* Mobile header & nav */
+    html.light header.glass,
+    html.light nav.m-nav {
+      background: rgba(255,255,255,0.85);
+      border-color: rgba(0,0,0,0.06);
+    }
+    html.light #mobileTitle { color: #1e293b; }
+    html.light .m-nav .mob-tab { color: #94a3b8; }
+
+    /* Text overrides */
+    html.light .text-white { color: #1e293b !important; }
+    html.light .text-slate-400 { color: #64748b !important; }
+    html.light .text-slate-500 { color: #94a3b8 !important; }
+    html.light .text-slate-600 { color: #64748b !important; }
+    html.light p.text-slate-400, html.light span.text-slate-500,
+    html.light div.text-slate-500 { color: #64748b !important; }
+
+    /* Cards & Stats */
+    html.light .stat-card {
+      background: rgba(255,255,255,0.8) !important;
+      border: 1px solid rgba(0,0,0,0.06) !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    html.light .stat-card:hover {
+      box-shadow: 0 12px 36px rgba(0,0,0,0.08);
+    }
+
+    /* Glass panels in light mode */
+    html.light .glass.rounded-2xl,
+    html.light .glass.rounded-xl {
+      background: rgba(255,255,255,0.8);
+      border-color: rgba(0,0,0,0.06);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    /* Inputs */
+    html.light input.search-input {
+      background: rgba(0,0,0,0.03);
+      border-color: rgba(0,0,0,0.1);
+      color: #1e293b;
+    }
+    html.light input.search-input:focus {
+      border-color: rgba(67,97,238,0.4);
+      background: white;
+    }
+    html.light input.search-input::placeholder { color: #94a3b8; }
+
+    html.light select.filter-select {
+      background-color: rgba(0,0,0,0.03);
+      border-color: rgba(0,0,0,0.1);
+      color: #1e293b;
+    }
+    html.light select.filter-select:hover,
+    html.light select.filter-select:focus {
+      border-color: rgba(67,97,238,0.3);
+      background-color: white;
+    }
+    html.light select.filter-select option {
+      background: white;
+      color: #1e293b;
+    }
+
+    /* Filter buttons */
+    html.light .filter-btn {
+      background: rgba(0,0,0,0.03);
+      border-color: rgba(0,0,0,0.08);
+      color: #64748b;
+    }
+    html.light .filter-btn:hover { background: rgba(0,0,0,0.06); color: #1e293b; }
+    html.light .filter-btn.active {
+      background: rgba(247,37,133,0.08);
+      border-color: rgba(247,37,133,0.25);
+      color: #f72585;
+    }
+
+    /* Mode tabs (ID Card etc) */
+    html.light .mode-tab:not(.active) {
+      background: rgba(0,0,0,0.03);
+      border-color: rgba(0,0,0,0.08);
+      color: #64748b;
+    }
+    html.light .mode-tab:not(.active):hover { background: rgba(0,0,0,0.06); color: #1e293b; }
+
+    /* Table rows */
+    html.light .trow:hover { background: rgba(0,0,0,0.02); }
+    html.light th { color: #64748b !important; }
+    html.light td { color: #334155 !important; border-color: rgba(0,0,0,0.04) !important; }
+
+    /* Chips */
+    html.light .chip-green { background: rgba(0,200,160,0.1); }
+    html.light .chip-orange { background: rgba(255,158,0,0.1); }
+    html.light .chip-pink { background: rgba(247,37,133,0.08); }
+    html.light .chip-blue { background: rgba(67,97,238,0.08); }
+    html.light .chip-cyan { background: rgba(76,201,240,0.1); }
+    html.light .chip-red { background: rgba(239,68,68,0.08); }
+
+    /* Paste area */
+    html.light .paste-area {
+      background: rgba(0,0,0,0.02);
+      border-color: rgba(0,0,0,0.12);
+      color: #1e293b;
+    }
+    html.light .paste-area:focus {
+      border-color: rgba(67,97,238,0.4);
+      background: white;
+    }
+
+    /* Loader */
+    html.light #loader .border-white\/5 { border-color: rgba(0,0,0,0.06); }
+
+    /* Table wrapper gradient */
+    html.light .table-wrap::after {
+      background: linear-gradient(to right, transparent, rgba(240,240,248,0.8));
+    }
+
+    /* Theme toggle in light mode */
+    html.light .theme-toggle {
+      background: rgba(0,0,0,0.08);
+      border-color: rgba(0,0,0,0.1);
+    }
+    html.light .theme-toggle::after {
+      left: 27px;
+      background: linear-gradient(135deg, #f59e0b, #f97316);
+      box-shadow: 0 2px 8px rgba(245,158,11,0.3);
+    }
+    html.light .theme-toggle .icon-moon { opacity: 0; }
+    html.light .theme-toggle .icon-sun { opacity: 0.6; }
+
+    /* Gradient text stays the same */
+
+    /* Main area background subtle pattern */
+    html.light .main {
+      background: linear-gradient(180deg, #f0f0f8 0%, #e8e8f4 100%);
+    }
+
+    /* Border overrides */
+    html.light .border-white\/5,
+    html.light .border-white\/10 {
+      border-color: rgba(0,0,0,0.06) !important;
+    }
+
+    /* Accent backgrounds in light mode: slightly more opaque */
+    html.light [class*="bg-accent-pink/10"],
+    html.light [class*="bg-accent-pink/5"] { background-color: rgba(247,37,133,0.06) !important; }
+    html.light [class*="bg-accent-blue/10"],
+    html.light [class*="bg-accent-blue/5"] { background-color: rgba(67,97,238,0.06) !important; }
+    html.light [class*="bg-accent-green/10"],
+    html.light [class*="bg-accent-green/5"] { background-color: rgba(0,245,212,0.06) !important; }
+
+    /* Code / mono text */
+    html.light code { color: #6366f1; }
+    html.light .font-mono { color: #475569; }
   </style>
 </head>
 <body>
@@ -168,7 +389,14 @@
       <div id="sidebarRoleBadge" class="mt-3 flex justify-center hidden"></div>
     </div>
     <nav class="flex-1 p-3 space-y-1 overflow-y-auto" id="sideNav"></nav>
-    <div class="p-3 border-t border-white/5">
+    <div class="p-3 border-t border-white/5 space-y-2">
+      <div class="flex items-center justify-between px-4 py-2">
+        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider" id="themeLabel">Mode Gelap</span>
+        <div class="theme-toggle" onclick="toggleTheme()" title="Ganti Mode Terang/Gelap">
+          <span class="toggle-icon icon-sun">☀️</span>
+          <span class="toggle-icon icon-moon">🌙</span>
+        </div>
+      </div>
       <button onclick="logout()" class="sidebar-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-500 hover:text-red-400 border border-transparent">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
         Keluar
@@ -188,6 +416,10 @@
       </div>
     </div>
     <div class="flex items-center gap-1">
+      <div class="theme-toggle" onclick="toggleTheme()" title="Ganti Mode" style="transform:scale(0.85)">
+        <span class="toggle-icon icon-sun">☀️</span>
+        <span class="toggle-icon icon-moon">🌙</span>
+      </div>
       <a href="index.html" class="p-2.5 rounded-xl hover:bg-white/5 text-slate-500 transition-colors active:scale-95" title="Kembali ke App"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12"/></svg></a>
       <button onclick="logout()" class="p-2.5 rounded-xl hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors active:scale-95" title="Keluar"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></button>
     </div>
@@ -212,6 +444,35 @@
 </div>
 
 <script>
+// ═══════════════════════════════════════════════════════════════
+//  THEME: LIGHT / DARK MODE
+// ═══════════════════════════════════════════════════════════════
+function getTheme() {
+  return localStorage.getItem('bas_owner_theme') || 'dark';
+}
+function applyTheme(theme) {
+  const html = document.documentElement;
+  if (theme === 'light') {
+    html.classList.add('light');
+    html.classList.remove('dark');
+  } else {
+    html.classList.add('dark');
+    html.classList.remove('light');
+  }
+  localStorage.setItem('bas_owner_theme', theme);
+  // Update label
+  const lbl = document.getElementById('themeLabel');
+  if (lbl) lbl.textContent = theme === 'light' ? 'Mode Terang' : 'Mode Gelap';
+  // Re-render active chart colors if any charts are showing
+  if (typeof updateChartsTheme === 'function') updateChartsTheme(theme);
+}
+function toggleTheme() {
+  const cur = getTheme();
+  applyTheme(cur === 'dark' ? 'light' : 'dark');
+}
+// Apply saved theme immediately
+applyTheme(getTheme());
+
 // ═══════════════════════════════════════════════════════════════
 //  CONFIG & STATE
 // ═══════════════════════════════════════════════════════════════
@@ -644,9 +905,17 @@ const C = {
   rd:'rgba(239,68,68,1)', rdB:'rgba(239,68,68,0.12)',
   multi:['rgba(247,37,133,1)','rgba(67,97,238,1)','rgba(76,201,240,1)','rgba(0,245,212,1)','rgba(255,158,0,1)','rgba(157,78,221,1)','rgba(239,68,68,1)','rgba(99,102,241,1)']
 };
-Chart.defaults.color='rgba(148,163,184,0.6)';
-Chart.defaults.borderColor='rgba(255,255,255,0.04)';
+function setChartTheme() {
+  const isLight = document.documentElement.classList.contains('light');
+  Chart.defaults.color = isLight ? 'rgba(100,116,139,0.8)' : 'rgba(148,163,184,0.6)';
+  Chart.defaults.borderColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.04)';
+}
+setChartTheme();
 Chart.defaults.font.family='Inter';
+function updateChartsTheme() {
+  setChartTheme();
+  Object.values(charts).forEach(c => { if(c && c.update) c.update(); });
+}
 function mkChart(id,cfg){if(charts[id])charts[id].destroy();const x=document.getElementById(id);if(!x)return null;charts[id]=new Chart(x,cfg);return charts[id];}
 
 // ═══════════════════════════════════════════════════════════════
