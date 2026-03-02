@@ -184,7 +184,7 @@ To automatically refresh data on a schedule:
   ```javascript
   const apiKey = PropertiesService.getScriptProperties().getProperty('API_KEY');
   ```
-- Set properties via: File > Project properties > Script properties
+- Set properties via: **Project Settings** (gear icon) in the left sidebar, then click **Script Properties**
 
 ## Logging
 View logs to troubleshoot issues:

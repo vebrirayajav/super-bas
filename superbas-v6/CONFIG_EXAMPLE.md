@@ -162,7 +162,7 @@ The script requires these permissions (defined in appsscript.json):
 
 Instead of hardcoding values, use Script Properties:
 
-1. In Apps Script editor: **File** > **Project properties** > **Script properties**
+1. In Apps Script editor: Click **Project Settings** (gear icon) in the left sidebar, then click **Script Properties**
 2. Add your properties:
    - Property: `API_ENDPOINT`, Value: `https://api.example.com/data`
    - Property: `API_KEY`, Value: `your_secret_key`
